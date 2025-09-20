@@ -4,9 +4,10 @@ This document describes the CLI options available in PyFlow, following the style
 
 ## Commands
 
-PyFlow provides two main commands:
+PyFlow provides three main commands:
 - `optimize`: Run static analysis and optimization on Python code
 - `callgraph`: Build and visualize call graphs from Python code
+- `ir`: Dump AST, CFG, and SSA forms for specific functions
 
 ## Optimize Command
 
@@ -66,8 +67,97 @@ Run only the specified optimization passes. Available passes:
 - `inlining`: Inline function calls where beneficial
 - `cullprogram`: Remove dead functions and contexts
 - `loadelimination`: Eliminate redundant load operations
-- `storeelimination`: Eliminate redundant store operations
-- `dce`: Dead code elimination
+
+## IR Command
+
+### Basic Usage
+```bash
+pyflow ir [OPTIONS] INPUT_PATH
+```
+
+Where `INPUT_PATH` is a Python file or directory to analyze.
+
+### IR Dumping Options
+
+#### --dump-ast FUNCTION
+Dump the Abstract Syntax Tree (AST) for the specified function name.
+
+**Example:**
+```bash
+pyflow ir examples/test_function.py --dump-ast fibonacci
+```
+
+#### --dump-cfg FUNCTION
+Dump the Control Flow Graph (CFG) for the specified function name.
+
+**Example:**
+```bash
+pyflow ir examples/test_function.py --dump-cfg quicksort
+```
+
+#### --dump-ssa FUNCTION
+Dump the Static Single Assignment (SSA) form for the specified function name.
+
+**Example:**
+```bash
+pyflow ir examples/test_function.py --dump-ssa fibonacci
+```
+
+#### --dump-format FORMAT
+Specify the output format for IR dumps. Available formats:
+- `text` (default): Human-readable text format
+- `dot`: Graphviz DOT format for visualization
+- `json`: JSON format for programmatic processing
+
+**Example:**
+```bash
+pyflow ir examples/test_function.py --dump-ast fibonacci --dump-format dot
+```
+
+#### --dump-output DIRECTORY
+Specify the output directory for IR dumps. Defaults to the current directory.
+
+**Example:**
+```bash
+pyflow ir examples/test_function.py --dump-ast fibonacci --dump-output ./output/
+```
+
+### File Selection Options
+
+#### --recursive, -r
+Recursively analyze subdirectories.
+
+#### --include PATTERN [PATTERN ...]
+File patterns to include in analysis (default: *.py).
+
+#### --exclude PATTERN [PATTERN ...]
+Patterns to exclude from analysis (e.g., 'test_*', '__pycache__').
+
+### Examples
+
+Dump all three forms for a function:
+```bash
+pyflow ir examples/test_function.py --dump-ast fibonacci --dump-cfg fibonacci --dump-ssa fibonacci
+```
+
+Dump CFG in DOT format for visualization:
+```bash
+pyflow ir examples/test_function.py --dump-cfg quicksort --dump-format dot
+```
+
+Analyze all Python files in a directory:
+```bash
+pyflow ir src/ --recursive --dump-ast my_function
+```
+
+## Call Graph Command
+
+### Basic Usage
+```bash
+pyflow callgraph [OPTIONS] INPUT_PATH
+```
+
+Where `INPUT_PATH` is a Python file or directory to analyze.
 
 **Examples:**
 ```bash

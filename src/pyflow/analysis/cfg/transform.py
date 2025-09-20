@@ -108,7 +108,7 @@ class CFGTransformer(TypeDispatcher):
     # 			fail.setExit('normal', self.current)
 
     @dispatch(ast.Switch)
-    def visitIf(self, node):
+    def visitSwitch(self, node):
         self(node.condition.preamble)
         switch = cfg.Switch(self.region, node.condition.conditional)
         self.attachStandardHandlers(switch)

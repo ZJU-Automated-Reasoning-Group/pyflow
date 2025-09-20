@@ -3,6 +3,9 @@ Program extractor for static analysis.
 
 This module provides functionality to extract program information
 from Python source code for static analysis purposes.
+
+FIXME: very likely to be buggy (Maybe we need to repalce it with
+the dir in src/pyflow/decompile)
 """
 
 import ast
@@ -96,6 +99,13 @@ class Extractor:
                         "interpreter__floordiv__": create_stub_code(
                             "interpreter__floordiv__"
                         ),
+                        "interpreter__eq__": create_stub_code("interpreter__eq__"),
+                        "interpreter__ne__": create_stub_code("interpreter__ne__"),
+                        "interpreter__lt__": create_stub_code("interpreter__lt__"),
+                        "interpreter__le__": create_stub_code("interpreter__le__"),
+                        "interpreter__gt__": create_stub_code("interpreter__gt__"),
+                        "interpreter__ge__": create_stub_code("interpreter__ge__"),
+                        "interpreter_getitem": create_stub_code("interpreter_getitem"),
                         "interpreter_call": create_stub_code("interpreter_call"),
                         "object__getattribute__": create_stub_code(
                             "object__getattribute__"
@@ -411,7 +421,8 @@ class Extractor:
                             return pyflow_ast.Suite([])
 
                         # Convert Python AST to pyflow AST
-                        return self._convert_python_ast_to_pyflow(func_node.body)
+                        result = self._convert_python_ast_to_pyflow(func_node.body)
+                        return result
 
                     except Exception as e:
                         # If decompilation fails, return empty suite
@@ -451,6 +462,17 @@ class Extractor:
                             # Convert expression statement
                             expr = self._convert_expression(node.value)
                             blocks.append(pyflow_ast.Discard(expr))
+                        elif isinstance(node, python_ast.If):
+                            # Convert if statement to Switch
+                            condition = self._convert_expression(node.test)
+                            true_body = self._convert_python_ast_to_pyflow(node.body)
+                            false_body = self._convert_python_ast_to_pyflow(node.orelse) if node.orelse else pyflow_ast.Suite([])
+                            
+                            # Create a Condition node
+                            cond = pyflow_ast.Condition(pyflow_ast.Suite([]), condition)
+                            # Create a Switch node
+                            switch = pyflow_ast.Switch(cond, true_body, false_body)
+                            blocks.append(switch)
                         # Add more node types as needed
 
                     return pyflow_ast.Suite(blocks)
@@ -480,6 +502,39 @@ class Extractor:
                             self._convert_expression(arg) for arg in python_node.args
                         ]
                         return pyflow_ast.Call(func, args, [], None, None)
+                    elif isinstance(python_node, python_ast.Compare):
+                        # Convert comparison operations
+                        left = self._convert_expression(python_node.left)
+                        if len(python_node.ops) == 1 and len(python_node.comparators) == 1:
+                            op_name = self._convert_comparison_operator(python_node.ops[0])
+                            right = self._convert_expression(python_node.comparators[0])
+                            # Create a Call to the interpreter function
+                            from ..language.python import program
+                            op_obj = program.Object(op_name)
+                            op_ref = pyflow_ast.Existing(op_obj)
+                            return pyflow_ast.Call(op_ref, [left, right], [], None, None)
+                        else:
+                            # For complex comparisons, fall back to None for now
+                            from ..language.python import program
+                            obj = program.Object(None)
+                            return pyflow_ast.Existing(obj)
+                    elif isinstance(python_node, python_ast.Subscript):
+                        # Convert array/list access (e.g., arr[mid])
+                        value = self._convert_expression(python_node.value)
+                        slice_expr = self._convert_expression(python_node.slice)
+                        return pyflow_ast.GetSubscript(value, slice_expr)
+                    elif isinstance(python_node, python_ast.Is):
+                        # Convert 'is' comparison
+                        return "is"
+                    elif isinstance(python_node, python_ast.IsNot):
+                        # Convert 'is not' comparison
+                        return "is not"
+                    elif isinstance(python_node, python_ast.In):
+                        # Convert 'in' comparison
+                        return "in"
+                    elif isinstance(python_node, python_ast.NotIn):
+                        # Convert 'not in' comparison
+                        return "not in"
                     else:
                         # Fallback for unknown expressions
                         from ..language.python import program
@@ -506,6 +561,24 @@ class Extractor:
                         python_ast.FloorDiv: "//",
                     }
                     return op_map.get(type(python_op), "+")
+
+                def _convert_comparison_operator(self, python_op):
+                    """Convert Python AST comparison operator to interpreter function name."""
+                    import ast as python_ast
+
+                    op_map = {
+                        python_ast.Eq: "interpreter__eq__",
+                        python_ast.NotEq: "interpreter__ne__",
+                        python_ast.Lt: "interpreter__lt__",
+                        python_ast.LtE: "interpreter__le__",
+                        python_ast.Gt: "interpreter__gt__",
+                        python_ast.GtE: "interpreter__ge__",
+                        python_ast.Is: "interpreter__is__",
+                        python_ast.IsNot: "interpreter__isnot__",
+                        python_ast.In: "interpreter__in__",
+                        python_ast.NotIn: "interpreter__notin__",
+                    }
+                    return op_map.get(type(python_op), "interpreter__eq__")
 
                 def __repr__(self):
                     return f"CodeObject({self.name})"

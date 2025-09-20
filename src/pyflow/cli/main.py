@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from .optimize import run_analysis
+from .ir import run_ir_dump
 from pyflow.analysis.callgraph import run_callgraph, add_callgraph_parser
 
 
@@ -135,6 +136,60 @@ def main():
 
     # Call graph command - use the modular parser
     add_callgraph_parser(subparsers)
+    
+    # IR dumping command
+    ir_parser = subparsers.add_parser(
+        "ir", help="Dump AST, CFG, and SSA forms for specific functions"
+    )
+    ir_parser.add_argument(
+        "input_path", help="Python file or directory to analyze"
+    )
+    ir_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
+    ir_parser.add_argument(
+        "--recursive",
+        "-r",
+        action="store_true",
+        help="Recursively analyze subdirectories",
+    )
+    ir_parser.add_argument(
+        "--exclude",
+        nargs="*",
+        default=[],
+        help="Patterns to exclude from analysis (e.g., 'test_*', '__pycache__')",
+    )
+    ir_parser.add_argument(
+        "--include",
+        nargs="*",
+        default=["*.py"],
+        help="File patterns to include in analysis (default: *.py)",
+    )
+    ir_parser.add_argument(
+        "--dump-ast",
+        metavar="FUNCTION",
+        help="Dump AST for the specified function name",
+    )
+    ir_parser.add_argument(
+        "--dump-cfg",
+        metavar="FUNCTION",
+        help="Dump CFG for the specified function name",
+    )
+    ir_parser.add_argument(
+        "--dump-ssa",
+        metavar="FUNCTION",
+        help="Dump SSA form for the specified function name",
+    )
+    ir_parser.add_argument(
+        "--dump-format",
+        choices=["text", "dot", "json"],
+        default="text",
+        help="Format for IR dumps (default: text)",
+    )
+    ir_parser.add_argument(
+        "--dump-output",
+        help="Output directory for IR dumps (default: current directory)",
+    )
 
     args = parser.parse_args()
 
@@ -151,6 +206,11 @@ def main():
         input_path = Path(args.input_path)
     elif args.command == "callgraph":
         input_path = Path(args.input)
+    elif args.command == "ir":
+        if args.input_path is None:
+            print("Error: input_path is required for IR dumping", file=sys.stderr)
+            sys.exit(1)
+        input_path = Path(args.input_path)
     else:
         input_path = None
 
@@ -164,6 +224,8 @@ def main():
         run_analysis(input_path, args)
     elif args.command == "callgraph":
         return run_callgraph(input_path, args)
+    elif args.command == "ir":
+        run_ir_dump(input_path, args)
     else:
         parser.print_help()
         sys.exit(1)
