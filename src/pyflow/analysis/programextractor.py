@@ -181,26 +181,49 @@ class Extractor:
         """Extract program information from an AST."""
         program = Program()
 
+        if self.verbose:
+            print(f"DEBUG: Extracting from AST for {filename}")
+
         # Walk through the AST to find functions and classes
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
+                if self.verbose:
+                    print(f"DEBUG: Found function definition: {node.name}")
                 self._extract_function(node, program)
             elif isinstance(node, ast.ClassDef):
+                if self.verbose:
+                    print(f"DEBUG: Found class definition: {node.name}")
                 self._extract_class(node, program)
+
+        if self.verbose:
+            print(f"DEBUG: Extraction complete, liveCode has {len(program.liveCode)} functions")
 
         return program
 
     def _extract_function(self, node: ast.FunctionDef, program: Program):
         """Extract information from a function definition."""
-        # Convert AST function to pyflow AST representation
-        # This is a simplified version - in practice you'd need more complex conversion
         try:
-            # For now, just track that we found a function
             if self.verbose:
                 print(f"Found function: {node.name}")
+            
+            # Convert Python AST function to pyflow AST
+            pyflow_code = self._convert_python_function_to_pyflow(node, None)
+            
+            # Add to program
+            if hasattr(program, 'liveCode'):
+                program.liveCode.add(pyflow_code)
+            else:
+                # Create liveCode if it doesn't exist
+                program.liveCode = {pyflow_code}
+                
+            if self.verbose:
+                print(f"Added function {node.name} to program")
+                
         except Exception as e:
             if self.verbose:
                 print(f"Error processing function {node.name}: {e}")
+                import traceback
+                traceback.print_exc()
             self.errors += 1
 
     def _extract_class(self, node: ast.ClassDef, program: Program):
@@ -231,365 +254,25 @@ class Extractor:
 
     def getObjectCall(self, func: Any) -> tuple:
         """Get object call information for a function."""
-        # Create a minimal code object for the function
+        # print(f"DEBUG: getObjectCall called with {func.__name__ if hasattr(func, '__name__') else 'unknown'}")
+
         if hasattr(func, "__name__"):
-            # Create a simple code object that has the required methods
-            class SimpleCodeObject:
-                def __init__(self, func, extractor=None):
-                    self.func = func
-                    self.name = func.__name__
-                    self.extractor = extractor
-                    # Create a real AST representation by decompiling the function
-                    self.ast = self._create_ast()
-
-                    # Initialize annotation attribute with proper CodeAnnotation
-                    from ..language.python.annotations import CodeAnnotation
-
-                    self.annotation = CodeAnnotation(
-                        contexts=None,
-                        descriptive=False,
-                        primitive=False,
-                        staticFold=False,
-                        dynamicFold=False,
-                        origin=[f"SimpleCodeObject({self.name})"],
-                        live=None,
-                        killed=None,
-                        codeReads=None,
-                        codeModifies=None,
-                        codeAllocates=None,
-                        lowered=False,
-                        runtime=False,
-                        interpreter=False,
-                    )
-
-                def codeName(self):
-                    return self.name
-
-                def isCode(self):
-                    return True
-
-                def isStandardCode(self):
-                    return False  # We handle constraint extraction ourselves
-
-                def isAbstractCode(self):
-                    return False
-
-                def rewriteAnnotation(self, **kwargs):
-                    """Rewrite annotation with new values."""
-                    self.annotation = self.annotation.rewrite(**kwargs)
-
-                def setCodeName(self, name):
-                    self.name = name
-
-                def abstractReads(self):
-                    return None
-
-                def abstractModifies(self):
-                    return None
-
-                def abstractAllocates(self):
-                    return None
-
-                def clone(self):
-                    """Clone this code object."""
-                    return SimpleCodeObject(self.func, self.extractor)
-
-                def visitChildren(self, callback):
-                    """Visit child nodes - for AST compatibility."""
-                    # Our AST has child nodes that need to be visited
-                    callback(self.ast)
-
-                def visitChildrenForced(self, callback):
-                    """Visit child nodes (forced) - for AST compatibility."""
-                    # Same as visitChildren for our simple case
-                    callback(self.ast)
-
-                def visitChildrenArgs(self, callback, *args):
-                    """Visit child nodes with args - for AST compatibility."""
-                    callback(self.ast, *args)
-
-                def visitChildrenForcedArgs(self, callback, *args):
-                    """Visit child nodes (forced) with args - for AST compatibility."""
-                    callback(self.ast, *args)
-
-                def children(self):
-                    """Get child nodes - for AST compatibility."""
-                    return [self.ast]
-
-                def replaceChildren(self, callback):
-                    """Replace child nodes - for AST compatibility."""
-                    # Replace our AST with the result of the callback
-                    new_ast = callback(self.ast)
-                    if new_ast is not None:
-                        self.ast = new_ast
-
-                def rewriteChildren(self, callback):
-                    """Rewrite child nodes - for AST compatibility."""
-                    # Same as replaceChildren for our case
-                    new_ast = callback(self.ast)
-                    if new_ast is not None:
-                        # Return a new SimpleCodeObject with the updated AST
-                        new_obj = SimpleCodeObject(self.func, self.extractor)
-                        new_obj.ast = new_ast
-                        return new_obj
-                    return self
-
-                def extractConstraints(self, extractor_instance):
-                    """Extract constraints from this code object."""
-                    # For simple functions, we delegate to the AST
-                    # The extractor_instance is an ExtractDataflow object
-                    if self.ast:
-                        extractor_instance(self.ast)
+            # Use proper function conversion instead of SimpleCodeObject hack
+            code_obj = self.convertFunction(func)
+            if code_obj:
+                # print(f"DEBUG: getObjectCall returning {type(code_obj)} for {func.__name__}")
+                
+                # Add the converted function to the program's live code
+                if hasattr(self, 'program') and self.program:
+                    if hasattr(self.program, 'liveCode'):
+                        self.program.liveCode.add(code_obj)
+                        # print(f"DEBUG: Added {func.__name__} to program.liveCode")
                     else:
-                        # For functions we can't analyze, do nothing
-                        # This allows the analysis to continue without crashing
-                        pass
-
-                def codeParameters(self):
-                    # Create a simple CalleeParams object for the function
-                    import inspect
-                    from pyflow.util.python.calling import CalleeParams
-                    from ..language.python import ast as pyflow_ast
-
-                    # For analysis purposes, make all functions accept any number of arguments
-                    # This ensures the call validation doesn't fail
-                    vparam_local = pyflow_ast.Local("*args")  # Create a local for *args
-
-                    return CalleeParams(
-                        selfparam=None,  # No self parameter for regular functions
-                        params=[],  # No required parameters
-                        paramnames=[],  # No parameter names
-                        defaults=(),  # No defaults
-                        vparam=vparam_local,  # Accept *args (any number of arguments)
-                        kparam=None,  # No **kwargs for now
-                        returnparams=[],  # No return parameters for now
-                    )
-
-                @property
-                def codeparameters(self):
-                    """Property accessor for compatibility."""
-                    return self.codeParameters()
-
-                def _create_ast(self):
-                    """Create a real AST by decompiling the function."""
-                    try:
-                        import ast as python_ast
-                        from ..language.python import ast as pyflow_ast
-                        import inspect
-
-                        # Try to get source code from the extractor's source_code first
-                        source = None
-                        if hasattr(self, "extractor") and self.extractor.source_code:
-                            if isinstance(self.extractor.source_code, dict):
-                                # Multiple files - try to find the source for this function
-                                for (
-                                    filename,
-                                    file_source,
-                                ) in self.extractor.source_code.items():
-                                    if self.name in file_source:
-                                        source = file_source
-                                        break
-                            else:
-                                # Single source file
-                                source = self.extractor.source_code
-
-                        if not source:
-                            # Fallback to inspect.getsource
-                            try:
-                                source = inspect.getsource(self.func)
-                            except (OSError, TypeError):
-                                pass
-
-                        if not source:
-                            return pyflow_ast.Suite([])
-
-                        # Parse it into a Python AST
-                        tree = python_ast.parse(source)
-
-                        # Find the function definition
-                        func_node = None
-                        for node in python_ast.walk(tree):
-                            if (
-                                isinstance(node, python_ast.FunctionDef)
-                                and node.name == self.name
-                            ):
-                                func_node = node
-                                break
-
-                        if func_node is None:
-                            # Fallback to empty suite
-                            return pyflow_ast.Suite([])
-
-                        # Convert Python AST to pyflow AST
-                        result = self._convert_python_ast_to_pyflow(func_node.body)
-                        return result
-
-                    except Exception as e:
-                        # If decompilation fails, return empty suite
-                        from ..language.python import ast as pyflow_ast
-
-                        return pyflow_ast.Suite([])
-
-                def _convert_python_ast_to_pyflow(self, python_nodes):
-                    """Convert Python AST nodes to pyflow AST nodes."""
-                    import ast as python_ast
-                    from ..language.python import ast as pyflow_ast
-
-                    if not python_nodes:
-                        return pyflow_ast.Suite([])
-
-                    # For now, create a simple suite with basic operations
-                    # This is a simplified conversion - in practice you'd need more complex logic
-                    blocks = []
-
-                    for node in python_nodes:
-                        if isinstance(node, python_ast.Return):
-                            # Convert return statement
-                            if node.value:
-                                # Simple return with expression
-                                expr = self._convert_expression(node.value)
-                                blocks.append(pyflow_ast.Return([expr]))
-                            else:
-                                blocks.append(pyflow_ast.Return([]))
-                        elif isinstance(node, python_ast.Assign):
-                            # Convert assignment
-                            for target in node.targets:
-                                if isinstance(target, python_ast.Name):
-                                    lcl = pyflow_ast.Local(target.id)
-                                    expr = self._convert_expression(node.value)
-                                    blocks.append(pyflow_ast.Assign(expr, [lcl]))
-                        elif isinstance(node, python_ast.Expr):
-                            # Convert expression statement
-                            expr = self._convert_expression(node.value)
-                            blocks.append(pyflow_ast.Discard(expr))
-                        elif isinstance(node, python_ast.If):
-                            # Convert if statement to Switch
-                            condition = self._convert_expression(node.test)
-                            true_body = self._convert_python_ast_to_pyflow(node.body)
-                            false_body = self._convert_python_ast_to_pyflow(node.orelse) if node.orelse else pyflow_ast.Suite([])
-                            
-                            # Create a Condition node
-                            cond = pyflow_ast.Condition(pyflow_ast.Suite([]), condition)
-                            # Create a Switch node
-                            switch = pyflow_ast.Switch(cond, true_body, false_body)
-                            blocks.append(switch)
-                        # Add more node types as needed
-
-                    return pyflow_ast.Suite(blocks)
-
-                def _convert_expression(self, python_node):
-                    """Convert Python AST expression to pyflow AST expression."""
-                    import ast as python_ast
-                    from ..language.python import ast as pyflow_ast
-
-                    if isinstance(python_node, python_ast.Name):
-                        return pyflow_ast.Local(python_node.id)
-                    elif isinstance(python_node, python_ast.Constant):
-                        # Create an Existing object for constants
-                        from ..language.python import program
-
-                        obj = program.Object(python_node.value)
-                        return pyflow_ast.Existing(obj)
-                    elif isinstance(python_node, python_ast.BinOp):
-                        left = self._convert_expression(python_node.left)
-                        right = self._convert_expression(python_node.right)
-                        op = self._convert_operator(python_node.op)
-                        return pyflow_ast.BinaryOp(left, op, right)
-                    elif isinstance(python_node, python_ast.Call):
-                        # Convert function call
-                        func = self._convert_expression(python_node.func)
-                        args = [
-                            self._convert_expression(arg) for arg in python_node.args
-                        ]
-                        return pyflow_ast.Call(func, args, [], None, None)
-                    elif isinstance(python_node, python_ast.Compare):
-                        # Convert comparison operations
-                        left = self._convert_expression(python_node.left)
-                        if len(python_node.ops) == 1 and len(python_node.comparators) == 1:
-                            op_name = self._convert_comparison_operator(python_node.ops[0])
-                            right = self._convert_expression(python_node.comparators[0])
-                            # Create a Call to the interpreter function
-                            from ..language.python import program
-                            op_obj = program.Object(op_name)
-                            op_ref = pyflow_ast.Existing(op_obj)
-                            return pyflow_ast.Call(op_ref, [left, right], [], None, None)
-                        else:
-                            # For complex comparisons, fall back to None for now
-                            from ..language.python import program
-                            obj = program.Object(None)
-                            return pyflow_ast.Existing(obj)
-                    elif isinstance(python_node, python_ast.Subscript):
-                        # Convert array/list access (e.g., arr[mid])
-                        value = self._convert_expression(python_node.value)
-                        slice_expr = self._convert_expression(python_node.slice)
-                        return pyflow_ast.GetSubscript(value, slice_expr)
-                    elif isinstance(python_node, python_ast.Is):
-                        # Convert 'is' comparison
-                        return "is"
-                    elif isinstance(python_node, python_ast.IsNot):
-                        # Convert 'is not' comparison
-                        return "is not"
-                    elif isinstance(python_node, python_ast.In):
-                        # Convert 'in' comparison
-                        return "in"
-                    elif isinstance(python_node, python_ast.NotIn):
-                        # Convert 'not in' comparison
-                        return "not in"
-                    else:
-                        # Fallback for unknown expressions
-                        from ..language.python import program
-
-                        obj = program.Object(None)
-                        return pyflow_ast.Existing(obj)
-
-                def _convert_operator(self, python_op):
-                    """Convert Python AST operator to string."""
-                    import ast as python_ast
-
-                    op_map = {
-                        python_ast.Add: "+",
-                        python_ast.Sub: "-",
-                        python_ast.Mult: "*",
-                        python_ast.Div: "/",
-                        python_ast.Mod: "%",
-                        python_ast.Pow: "**",
-                        python_ast.LShift: "<<",
-                        python_ast.RShift: ">>",
-                        python_ast.BitOr: "|",
-                        python_ast.BitXor: "^",
-                        python_ast.BitAnd: "&",
-                        python_ast.FloorDiv: "//",
-                    }
-                    return op_map.get(type(python_op), "+")
-
-                def _convert_comparison_operator(self, python_op):
-                    """Convert Python AST comparison operator to interpreter function name."""
-                    import ast as python_ast
-
-                    op_map = {
-                        python_ast.Eq: "interpreter__eq__",
-                        python_ast.NotEq: "interpreter__ne__",
-                        python_ast.Lt: "interpreter__lt__",
-                        python_ast.LtE: "interpreter__le__",
-                        python_ast.Gt: "interpreter__gt__",
-                        python_ast.GtE: "interpreter__ge__",
-                        python_ast.Is: "interpreter__is__",
-                        python_ast.IsNot: "interpreter__isnot__",
-                        python_ast.In: "interpreter__in__",
-                        python_ast.NotIn: "interpreter__notin__",
-                    }
-                    return op_map.get(type(python_op), "interpreter__eq__")
-
-                def __repr__(self):
-                    return f"CodeObject({self.name})"
-
-            code_obj = SimpleCodeObject(func, self)
+                        self.program.liveCode = {code_obj}
+                        # print(f"DEBUG: Created program.liveCode with {func.__name__}")
+                
             return func, code_obj
-        else:
-            # Fallback for non-function objects
-            return func, None
 
-    # Minimal implementation needed by shape tests
     def makeImaginary(
         self, name: str, t: AbstractObject, preexisting: bool
     ) -> ImaginaryObject:
@@ -642,29 +325,48 @@ class Extractor:
             return code_obj
         return None
 
-    def decompileFunction(
+    def convertFunction(
         self,
         func: Any,
         trace: bool = False,
         ssa: bool = True,
         descriptive: bool = False,
     ) -> Any:
-        """Decompile a function for static analysis."""
-        # For static analysis, we don't actually decompile bytecode
-        # Instead, we can analyze the function's source code or metadata
-        if self.verbose:
-            print(f"Analyzing function: {func.__name__}")
-
-        # Create a mock AST representation for static analysis
-        # This is a simplified version - in practice you'd need more complex AST construction
-        import ast as python_ast
-        from ..language.python import ast as pyflow_ast
+        """Convert a Python function to PyFlow AST for static analysis."""
+        # print(f"DEBUG: convertFunction called with {func.__name__}")
 
         try:
             # Get the source code of the function
             import inspect
+            import ast as python_ast
+            from ..language.python import ast as pyflow_ast
 
-            source = inspect.getsource(func)
+            # Try to get source code from the extractor's source_code first
+            source = None
+            if hasattr(self, "source_code") and self.source_code:
+                if isinstance(self.source_code, dict):
+                    # Multiple files - try to find the source for this function
+                    for filename, file_source in self.source_code.items():
+                        if func.__name__ in file_source:
+                            source = file_source
+                            break
+                else:
+                    # Single source file
+                    source = self.source_code
+
+            if not source:
+                # Fallback to inspect.getsource
+                try:
+                    source = inspect.getsource(func)
+                except (OSError, TypeError):
+                    pass
+
+            if not source:
+                print(f"DEBUG: Could not get source code for {func.__name__}")
+                return self._create_minimal_code(func)
+
+            # print(f"DEBUG: Source code for {func.__name__}:")
+            # print(source[:200] + "..." if len(source) > 200 else source)
 
             # Parse it into a Python AST
             tree = python_ast.parse(source)
@@ -680,15 +382,20 @@ class Extractor:
                     break
 
             if func_node is None:
-                # Fallback to minimal ast.Code stub
+                print(f"DEBUG: Could not find function definition for {func.__name__}")
                 return self._create_minimal_code(func)
 
-            # Convert to minimal pyflow AST (simplified)
-            return self._create_minimal_code(func)
+            # print(f"DEBUG: Found function node for {func.__name__}, body has {len(func_node.body)} statements")
+
+            # Convert Python AST to pyflow AST
+            result = self._convert_python_function_to_pyflow(func_node, func)
+            # print(f"DEBUG: Converted AST for {func.__name__}: {type(result)}")
+            return result
 
         except Exception as e:
-            if self.verbose:
-                print(f"Error analyzing function {func.__name__}: {e}")
+            print(f"DEBUG: Error analyzing function {func.__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback: create a minimal code stub
             return self._create_minimal_code(func)
 
@@ -722,10 +429,280 @@ class Extractor:
 
         return code
 
-    def _convert_to_pyflow_ast(self, func_node: Any, func: Any) -> Any:
-        """Convert Python AST to pyflow AST (simplified)."""
-        # For now, just use the mock implementation
-        return self._create_mock_ast(func)
+    def _convert_python_function_to_pyflow(self, func_node, func: Any) -> Any:
+        """Convert a Python AST FunctionDef to a pyflow AST Code node."""
+        import ast as python_ast
+        from ..language.python import ast as pyflow_ast
+
+        # Convert function parameters
+        codeparams = self._convert_function_args(func_node.args, func)
+        
+        # Convert function body
+        body = self._convert_python_ast_to_pyflow(func_node.body)
+        
+        # Use func_node.name if func is None
+        func_name = func.__name__ if func else func_node.name
+        
+        code = pyflow_ast.Code(func_name, codeparams, body)
+        
+        # Initialize the annotation properly
+        from ..language.python.annotations import CodeAnnotation
+        
+        code.annotation = CodeAnnotation(
+            contexts=None,
+            descriptive=False,
+            primitive=False,
+            staticFold=False,
+            dynamicFold=False,
+            origin=[f"converted_function({func_name})"],
+            live=None,
+            killed=None,
+            codeReads=None,
+            codeModifies=None,
+            codeAllocates=None,
+            lowered=False,
+            runtime=False,
+            interpreter=False,
+        )
+        
+        return code
+
+    def _convert_function_args(self, args_node, func: Any) -> Any:
+        """Convert Python AST arguments to pyflow AST CodeParameters."""
+        from ..language.python import ast as pyflow_ast
+        
+        # Get default values
+        defaults = []
+        if args_node.defaults:
+            for default in args_node.defaults:
+                defaults.append(self._convert_expression(default))
+        
+        # Get parameter names
+        param_names = [arg.arg for arg in args_node.args]
+        
+        # Create Local objects for parameters
+        params = [pyflow_ast.Local(name) for name in param_names]
+        
+        # Handle *args and **kwargs
+        vararg = None
+        if args_node.vararg:
+            vararg = pyflow_ast.Local(args_node.vararg.arg)
+        
+        kwarg = None
+        if args_node.kwarg:
+            kwarg = pyflow_ast.Local(args_node.kwarg.arg)
+        
+        return pyflow_ast.CodeParameters(
+            selfparam=None,  # No self for regular functions
+            params=params,
+            paramnames=param_names,
+            defaults=tuple(defaults),
+            vparam=vararg,
+            kparam=kwarg,
+            returnparams=[]
+        )
+
+    def _convert_python_ast_to_pyflow(self, python_nodes):
+        """Convert Python AST nodes to pyflow AST nodes."""
+        import ast as python_ast
+        from ..language.python import ast as pyflow_ast
+
+        if self.verbose:
+            print(f"DEBUG: Converting {len(python_nodes)} Python AST nodes")
+
+        if not python_nodes:
+            return pyflow_ast.Suite([])
+
+        blocks = []
+        for i, node in enumerate(python_nodes):
+            # print(f"DEBUG: Converting node {i}: {type(node).__name__}")
+            # if hasattr(node, 'lineno'):
+            #     print(f"DEBUG: Node at line {node.lineno}")
+            converted = self._convert_node(node)
+            if converted is not None:
+                # print(f"DEBUG: Converted to: {type(converted).__name__}")
+                blocks.append(converted)
+            # else:
+            #     print(f"DEBUG: Node {i} converted to None")
+
+        if self.verbose:
+            print(f"DEBUG: Final blocks: {len(blocks)}")
+        return pyflow_ast.Suite(blocks)
+
+    def _convert_node(self, node):
+        """Convert a single Python AST node to pyflow AST."""
+        import ast as python_ast
+        from ..language.python import ast as pyflow_ast
+
+        if isinstance(node, python_ast.Return):
+            if node.value:
+                expr = self._convert_expression(node.value)
+                return pyflow_ast.Return([expr])
+            else:
+                return pyflow_ast.Return([])
+        
+        elif isinstance(node, python_ast.Assign):
+            # Handle assignment: target = value
+            targets = []
+            for target in node.targets:
+                if isinstance(target, python_ast.Name):
+                    targets.append(pyflow_ast.Local(target.id))
+                else:
+                    # For more complex targets, create a generic local
+                    targets.append(pyflow_ast.Local(f"target_{id(target)}"))
+            
+            value = self._convert_expression_safe(node.value)
+            return pyflow_ast.Assign(value, targets)
+        
+        elif isinstance(node, python_ast.If):
+            # Handle if statements
+            condition = self._convert_expression_safe(node.test)
+            
+            then_body = self._convert_python_ast_to_pyflow(node.body)
+            else_body = self._convert_python_ast_to_pyflow(node.orelse)
+            
+            # Create a Switch node for the condition
+            return pyflow_ast.Switch(
+                condition=pyflow_ast.Condition(pyflow_ast.Suite([]), condition),
+                t=then_body,
+                f=else_body
+            )
+        
+        elif isinstance(node, python_ast.Expr):
+            # Handle expression statements (like function calls)
+            return pyflow_ast.Discard(self._convert_expression_safe(node.value))
+        
+        elif isinstance(node, python_ast.Pass):
+            # Handle pass statements
+            return pyflow_ast.Suite([])
+        
+        else:
+            # For unhandled node types, create a generic discard
+            if hasattr(node, 'value'):
+                return pyflow_ast.Discard(self._convert_expression(node.value))
+            else:
+                return pyflow_ast.Suite([])
+
+    def _convert_expression(self, node):
+        """Convert Python AST expressions to pyflow AST expressions."""
+        import ast as python_ast
+        from ..language.python import ast as pyflow_ast
+
+        if isinstance(node, python_ast.Name):
+            return pyflow_ast.Local(node.id)
+        
+        elif isinstance(node, python_ast.Constant):
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(node.value))
+        
+        elif isinstance(node, python_ast.Num):  # Python < 3.8
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(node.n))
+        
+        elif isinstance(node, python_ast.Str):  # Python < 3.8
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(node.s))
+        
+        elif isinstance(node, python_ast.NameConstant):  # Python < 3.8
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(node.value))
+        
+        elif isinstance(node, python_ast.Call):
+            # Handle function calls
+            func = self._convert_expression(node.func)
+            args = [self._convert_expression(arg) for arg in node.args]
+            keywords = []
+            if node.keywords:
+                for kw in node.keywords:
+                    keywords.append((kw.arg, self._convert_expression(kw.value)))
+            
+            return pyflow_ast.Call(func, args, keywords, None, None)
+        
+        elif isinstance(node, python_ast.Compare):
+            # Handle comparisons (==, !=, <, >, etc.)
+            left = self._convert_expression(node.left)
+            if len(node.ops) == 1 and len(node.comparators) == 1:
+                op = node.ops[0]
+                right = self._convert_expression(node.comparators[0])
+                
+                # Map Python comparison operators to pyflow operators
+                op_map = {
+                    python_ast.Eq: 'interpreter__eq__',
+                    python_ast.NotEq: 'interpreter__ne__',
+                    python_ast.Lt: 'interpreter__lt__',
+                    python_ast.LtE: 'interpreter__le__',
+                    python_ast.Gt: 'interpreter__gt__',
+                    python_ast.GtE: 'interpreter__ge__',
+                    python_ast.Is: 'interpreter__is__',
+                    python_ast.IsNot: 'interpreter__is_not__',
+                }
+                
+                if type(op) in op_map:
+                    op_name = op_map[type(op)]
+                    from ..language.python.program import Object
+                    return pyflow_ast.Call(
+                        pyflow_ast.Existing(Object(op_name)),
+                        [left, right], [], None, None
+                    )
+            
+            # Fallback for complex comparisons
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(None))
+        
+        elif isinstance(node, python_ast.BinOp):
+            # Handle binary operations (+, -, *, /, etc.)
+            left = self._convert_expression(node.left)
+            right = self._convert_expression(node.right)
+            
+            op_map = {
+                python_ast.Add: 'interpreter__add__',
+                python_ast.Sub: 'interpreter__sub__',
+                python_ast.Mult: 'interpreter__mul__',
+                python_ast.Div: 'interpreter__truediv__',
+                python_ast.FloorDiv: 'interpreter__floordiv__',
+                python_ast.Mod: 'interpreter__mod__',
+                python_ast.Pow: 'interpreter__pow__',
+            }
+            
+            if type(node.op) in op_map:
+                op_name = op_map[type(node.op)]
+                from ..language.python.program import Object
+                return pyflow_ast.Call(
+                    pyflow_ast.Existing(Object(op_name)),
+                    [left, right], [], None, None
+                )
+            
+            # Fallback
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(None))
+        
+        elif isinstance(node, python_ast.Subscript):
+            # Handle array/list indexing: arr[index]
+            value = self._convert_expression(node.value)
+            if isinstance(node.slice, python_ast.Index):  # Python < 3.9
+                index = self._convert_expression(node.slice.value)
+            else:
+                index = self._convert_expression(node.slice)
+            
+            from ..language.python.program import Object
+            return pyflow_ast.Call(
+                pyflow_ast.Existing(Object('interpreter__getitem__')),
+                [value, index], [], None, None
+            )
+        
+        else:
+            # Fallback for unhandled expressions
+            from ..language.python.program import Object
+            return pyflow_ast.Existing(Object(None))
+    
+    def _convert_expression_safe(self, node):
+        """Convert Python AST expressions to pyflow AST expressions with None protection."""
+        result = self._convert_expression(node)
+        if result is None:
+            from ..language.python.program import Object
+            from ..language.python import ast as pyflow_ast
+            return pyflow_ast.Existing(Object(None))
+        return result
 
 
 def extractProgram(compiler: CompilerContext, program: Program) -> None:

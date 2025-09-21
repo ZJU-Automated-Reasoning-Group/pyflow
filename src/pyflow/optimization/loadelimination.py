@@ -182,8 +182,10 @@ def evaluate(compiler, prgm):
             if code.isStandardCode() and not code.annotation.descriptive:
                 # Count loads before elimination
                 rm = FindReadModify().processCode(code)
+                fessa = ForwardESSA(rm)
+                fessa.processCode(code)
                 loads, stores = RedundantLoadEliminator(
-                    None, None, rm.readLUT, rm.writeLUT, {}
+                    None, None, fessa.readLUT, fessa.writeLUT, {}
                 ).findLoadStores()
                 codeLoads = len(loads)
                 totalLoads += codeLoads

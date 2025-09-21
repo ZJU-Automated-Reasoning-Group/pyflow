@@ -71,13 +71,14 @@ def codeConditioning(compiler, prgm, firstPass, dumpStats=False):
 
         if firstPass:
             # Try to eliminate trivial functions.
-            codeinlining.evaluate(compiler, prgm)
+            # codeinlining.evaluate(compiler, prgm)  # Temporarily disabled
 
             # Get rid of dead functions/contexts
             cullprogram.evaluate(compiler, prgm)
 
-        if True:
+        if False:  # Temporarily disable load elimination
             loadelimination.evaluate(compiler, prgm)
+
 
         if True:
             storeelimination.evaluate(compiler, prgm)

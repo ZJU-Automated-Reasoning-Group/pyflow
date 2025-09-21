@@ -18,11 +18,33 @@ from pyflow.util.application.console import Console
 import pyflow.util.pydot as pydot
 
 
-def find_function_in_live_code(liveCode, function_name: str):
+def find_function_in_live_code(liveCode, function_name: str, program=None):
     """Find a function by name in live code."""
-    for code in liveCode:
-        if hasattr(code, 'codeName') and code.codeName() == function_name:
-            return code
+    # print(f"DEBUG: Looking for function '{function_name}' in {len(liveCode)} live code objects")
+    for i, code in enumerate(liveCode):
+        if hasattr(code, 'codeName'):
+            code_name = code.codeName()
+            # print(f"DEBUG: Live code {i}: {code_name} (type: {type(code)})")
+            if code_name == function_name:
+                # print(f"DEBUG: Found function '{function_name}'")
+                return code
+        # else:
+        #     print(f"DEBUG: Live code {i}: no codeName method (type: {type(code)})")
+    
+    # If not found in live code, try looking in entry points
+    if program and hasattr(program, 'interface') and hasattr(program.interface, 'entryPoint'):
+        # print(f"DEBUG: Function '{function_name}' not found in live code, checking entry points")
+        for i, ep in enumerate(program.interface.entryPoint):
+            if hasattr(ep.code, 'codeName'):
+                code_name = ep.code.codeName()
+                # print(f"DEBUG: Entry point {i}: {code_name} (type: {type(ep.code)})")
+                if code_name == function_name:
+                    # print(f"DEBUG: Found function '{function_name}' in entry points")
+                    return ep.code
+            # else:
+            #     print(f"DEBUG: Entry point {i}: no codeName method (type: {type(ep.code)})")
+    
+    # print(f"DEBUG: Function '{function_name}' not found")
     return None
 
 
@@ -35,31 +57,38 @@ def write_ir_file(output_file: str, function_name: str, ir_type: str, content: s
     print(f"{ir_type} dumped to: {output_file}")
 
 
-def dump_ast(compiler, liveCode, function_name: str, output_dir: str, format: str = "text"):
+def dump_ast(compiler, liveCode, function_name: str, output_dir: str, format: str = "text", program=None):
     """Dump the AST for a specific function."""
-    func = find_function_in_live_code(liveCode, function_name)
+    func = find_function_in_live_code(liveCode, function_name, program)
     if not func:
         print(f"Error: Function '{function_name}' not found in live code", file=sys.stderr)
         return False
     
     try:
-        if not (hasattr(func, 'ast') and func.ast):
+        # Check if the function has an ast attribute
+        if hasattr(func, 'ast') and func.ast:
+            ast_content = str(func.ast)
+        elif hasattr(func, 'code') and hasattr(func.code, 'ast') and func.code.ast:
+            ast_content = str(func.code.ast)
+        else:
             print(f"Error: No AST available for function '{function_name}'", file=sys.stderr)
             return False
         
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{function_name}_ast.{format}")
-        write_ir_file(output_file, function_name, "AST", str(func.ast))
+        write_ir_file(output_file, function_name, "AST", ast_content)
         return True
         
     except Exception as e:
         print(f"Error dumping AST: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return False
 
 
-def dump_cfg(compiler, liveCode, function_name: str, output_dir: str, format: str = "text"):
+def dump_cfg(compiler, liveCode, function_name: str, output_dir: str, format: str = "text", program=None):
     """Dump the CFG for a specific function."""
-    func = find_function_in_live_code(liveCode, function_name)
+    func = find_function_in_live_code(liveCode, function_name, program)
     if not func:
         print(f"Error: Function '{function_name}' not found in live code", file=sys.stderr)
         return False
@@ -68,10 +97,6 @@ def dump_cfg(compiler, liveCode, function_name: str, output_dir: str, format: st
         from pyflow.analysis.cfg import transform, dump as cfg_dump
         
         cfg = transform.evaluate(compiler, func)
-        print(f"DEBUG: CFG type: {type(cfg)}")
-        print(f"DEBUG: CFG entry: {cfg.entryTerminal}")
-        print(f"DEBUG: CFG normal: {cfg.normalTerminal}")
-        print(f"DEBUG: CFG error: {cfg.errorTerminal}")
         
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{function_name}_cfg.{format}")
@@ -104,75 +129,91 @@ def dump_cfg(compiler, liveCode, function_name: str, output_dir: str, format: st
 
 def _generate_clang_style_cfg(cfg):
     """Generate clang-style CFG representation."""
-    # Collect all nodes and assign block numbers
-    visited = set()
-    queue = [cfg.entryTerminal]
-    all_nodes = []
-    node_to_block = {}
-    
-    # BFS to collect all nodes
-    while queue:
-        node = queue.pop(0)
-        if node in visited:
-            continue
-        visited.add(node)
-        all_nodes.append(node)
+    try:
+        # Collect all nodes and assign block numbers
+        visited = set()
+        queue = [cfg.entryTerminal]
+        all_nodes = []
+        node_to_block = {}
         
-        if hasattr(node, 'next'):
-            for name, next_node in node.next.items():
-                if next_node and next_node not in visited:
-                    queue.append(next_node)
-    
-    # Assign block numbers
-    for i, node in enumerate(all_nodes):
-        node_to_block[node] = f"B{i}"
-    
-    # Generate CFG content
-    content = "CFG:\n"
-    for i, node in enumerate(all_nodes):
-        block_id = f"B{i}"
-        content += f"\n{block_id}:\n"
+        # BFS to collect all nodes
+        while queue:
+            node = queue.pop(0)
+            if node in visited:
+                continue
+            visited.add(node)
+            all_nodes.append(node)
+            
+            if hasattr(node, 'next'):
+                for name, next_node in node.next.items():
+                    if next_node and next_node not in visited:
+                        queue.append(next_node)
         
-        # Determine block type
-        if node == cfg.entryTerminal:
-            content += "  [ENTRY]\n"
-        elif node == cfg.normalTerminal:
-            content += "  [EXIT]\n"
-        elif node == cfg.failTerminal:
-            content += "  [FAIL EXIT]\n"
-        elif node == cfg.errorTerminal:
-            content += "  [ERROR EXIT]\n"
-        else:
-            content += f"  [{type(node).__name__}]\n"
+        # Assign block numbers
+        for i, node in enumerate(all_nodes):
+            node_to_block[node] = f"B{i}"
         
-        # Show statements/operations in this block
-        if hasattr(node, 'ops') and node.ops:
-            for op in node.ops:
-                content += f"    {op}\n"
-        elif hasattr(node, 'condition') and node.condition:
-            content += f"    Condition: {node.condition}\n"
-        elif hasattr(node, 'phi') and node.phi:
-            for phi in node.phi:
-                content += f"    Phi: {phi}\n"
+        # Generate CFG content
+        content = "CFG:\n"
+        for i, node in enumerate(all_nodes):
+            try:
+                block_id = f"B{i}"
+                content += f"\n{block_id}:\n"
+                
+                # Determine block type
+                if node == cfg.entryTerminal:
+                    content += "  [ENTRY]\n"
+                elif node == cfg.normalTerminal:
+                    content += "  [EXIT]\n"
+                elif node == cfg.failTerminal:
+                    content += "  [FAIL EXIT]\n"
+                elif node == cfg.errorTerminal:
+                    content += "  [ERROR EXIT]\n"
+                else:
+                    content += f"  [{type(node).__name__}]\n"
+                
+                # Show statements/operations in this block
+                if hasattr(node, 'ops') and node.ops:
+                    for op in node.ops:
+                        try:
+                            content += f"    {op}\n"
+                        except Exception:
+                            # Fallback to repr if str() fails
+                            content += f"    {repr(op)}\n"
+                elif hasattr(node, 'condition') and node.condition:
+                    try:
+                        content += f"    Condition: {node.condition}\n"
+                    except Exception:
+                        content += f"    Condition: {repr(node.condition)}\n"
+                elif hasattr(node, 'phi') and node.phi:
+                    for phi in node.phi:
+                        try:
+                            content += f"    Phi: {phi}\n"
+                        except Exception:
+                            content += f"    Phi: {repr(phi)}\n"
+                
+                # Show outgoing edges
+                if hasattr(node, 'next') and node.next:
+                    content += "  Succs ("
+                    edges = []
+                    for name, next_node in node.next.items():
+                        if next_node and next_node in node_to_block:
+                            edges.append(f"{name} -> {node_to_block[next_node]}")
+                    content += ", ".join(edges)
+                    content += ")\n"
+                else:
+                    content += "  Succs ()\n"
+            except Exception as e:
+                content += f"  Error processing node {i}: {e}\n"
         
-        # Show outgoing edges
-        if hasattr(node, 'next') and node.next:
-            content += "  Succs ("
-            edges = []
-            for name, next_node in node.next.items():
-                if next_node and next_node in node_to_block:
-                    edges.append(f"{name} -> {node_to_block[next_node]}")
-            content += ", ".join(edges)
-            content += ")\n"
-        else:
-            content += "  Succs ()\n"
-    
-    return content
+        return content
+    except Exception as e:
+        return f"Error generating CFG: {e}"
 
 
-def dump_ssa(compiler, liveCode, function_name: str, output_dir: str, format: str = "text"):
+def dump_ssa(compiler, liveCode, function_name: str, output_dir: str, format: str = "text", program=None):
     """Dump the SSA form for a specific function."""
-    func = find_function_in_live_code(liveCode, function_name)
+    func = find_function_in_live_code(liveCode, function_name, program)
     if not func:
         print(f"Error: Function '{function_name}' not found in live code", file=sys.stderr)
         return False
@@ -191,12 +232,16 @@ def dump_ssa(compiler, liveCode, function_name: str, output_dir: str, format: st
             cfg_dump.evaluate(compiler, cfg)
             print(f"SSA form dumped to: {output_file}")
         else:
-            write_ir_file(output_file, function_name, "SSA form", str(cfg))
+            # Use the same clang-style CFG representation for SSA
+            content = _generate_clang_style_cfg(cfg)
+            write_ir_file(output_file, function_name, "SSA form", content)
         
         return True
         
     except Exception as e:
         print(f"Error dumping SSA: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -287,12 +332,26 @@ def run_ir_dump(input_path: Path, args):
         program.interface.translate(compiler.extractor)
         if program.interface.func:
             print(f"Created {len(program.interface.entryPoint)} entry points from {len(program.interface.func)} functions")
+            
+        # print(f"DEBUG: Entry points:")
+        # for i, ep in enumerate(program.interface.entryPoint):
+        #     if hasattr(ep.code, 'codeName'):
+        #         print(f"DEBUG: Entry point {i}: {ep.code.codeName()} (type: {type(ep.code)})")
+        #     else:
+        #         print(f"DEBUG: Entry point {i}: no codeName method (type: {type(ep.code)})")
 
         with console.scope("analysis"):
             evaluate(compiler, program, str(input_path))
 
         from pyflow.analysis.programculler import findLiveCode
         liveCode, liveInvocations = findLiveCode(program)
+        
+        # print(f"DEBUG: After findLiveCode, liveCode has {len(liveCode)} objects")
+        # for i, code in enumerate(liveCode):
+        #     if hasattr(code, 'codeName'):
+        #         print(f"DEBUG: Live code {i}: {code.codeName()} (type: {type(code)})")
+        #     else:
+        #         print(f"DEBUG: Live code {i}: no codeName method (type: {type(code)})")
         
         output_dir = args.dump_output or "."
         
@@ -306,7 +365,7 @@ def run_ir_dump(input_path: Path, args):
         
         for dump_arg, dump_func in dump_functions.items():
             if hasattr(args, dump_arg) and getattr(args, dump_arg):
-                if not dump_func(compiler, liveCode, getattr(args, dump_arg), output_dir, args.dump_format):
+                if not dump_func(compiler, liveCode, getattr(args, dump_arg), output_dir, args.dump_format, program):
                     success = False
         
         if success:

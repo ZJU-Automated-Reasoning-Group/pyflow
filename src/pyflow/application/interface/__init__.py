@@ -67,6 +67,7 @@ class InterfaceDeclaration(object):
 
     def translate(self, extractor):
         assert not self.translated
+        # print(f"DEBUG: Interface translate called with {len(self.func)} functions")
 
         self.entryPoint = []
 
@@ -100,6 +101,7 @@ class InterfaceDeclaration(object):
 
     def _extractFunc(self, extractor):
         for expr, args in self.func:
+            # print(f"DEBUG: Interface translating function {expr.__name__ if hasattr(expr, '__name__') else 'unknown'}")
             fobj, code = extractor.getObjectCall(expr)
 
             selfarg = ExistingWrapper(expr)

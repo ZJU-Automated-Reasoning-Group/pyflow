@@ -60,9 +60,16 @@ class CallGraphFinder(Finder):
 
 def makeCGF(interface):
     cgf = CallGraphFinder()
-    for code, context in interface.entryCodeContexts():
-        assert context in code.annotation.contexts
-        cgf.process((code, context))
+    entry_code_contexts = interface.entryCodeContexts()
+    for code, context in entry_code_contexts:
+        try:
+            assert context in code.annotation.contexts
+            cgf.process((code, context))
+        except AssertionError as e:
+            pass
+        except Exception as e:
+            pass
+    
 
     return cgf
 

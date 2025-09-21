@@ -123,15 +123,17 @@ class CFGTransformer(TypeDispatcher):
         except NoNormalFlow:
             pass
         else:
-            merges.append(self.current)
+            if self.current is not None:
+                merges.append(self.current)
 
-            switch.setExit("false", self.makeNewSuite())
+        switch.setExit("false", self.makeNewSuite())
         try:
             self(node.f)
         except NoNormalFlow:
             pass
         else:
-            merges.append(self.current)
+            if self.current is not None:
+                merges.append(self.current)
 
         if len(merges) == 2:
             merge = self.createMerge()

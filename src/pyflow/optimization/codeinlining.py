@@ -275,7 +275,7 @@ class CodeInliningTransform(TypeDispatcher):
         return result if isinstance(result, list) else node
 
     @dispatch(ast.DirectCall)
-    def visitDirectCall(self, node, returnargs):
+    def visitDirectCall(self, node, returnargs=None):
         self.processInvocations(node)
 
         if not node.kargs and not node.vargs and not node.kwds:
@@ -284,7 +284,7 @@ class CodeInliningTransform(TypeDispatcher):
             return None
 
     @dispatch(ast.Call)
-    def visitCall(self, node, returnargs):
+    def visitCall(self, node, returnargs=None):
         self.processInvocations(node)
 
         if not node.kargs and not node.vargs and not node.kwds:
@@ -293,7 +293,7 @@ class CodeInliningTransform(TypeDispatcher):
             return None
 
     @dispatch(ast.MethodCall)
-    def visitMethodCall(self, node, returnargs):
+    def visitMethodCall(self, node, returnargs=None):
         self.processInvocations(node)
 
         # TODO inline method calls?  This may require a bit of effort,

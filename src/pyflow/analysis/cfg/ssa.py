@@ -183,7 +183,11 @@ class SSARename(TypeDispatcher):
 
     @dispatch(ast.Local)
     def visitLocal(self, node):
-        result = self.currentFrame[node]
+        if node in self.currentFrame:
+            result = self.currentFrame[node]
+        else:
+            # Handle missing local variables by cloning them
+            result = self.clone(node, self.currentFrame)
         self.read.add(result)
         return result
 
