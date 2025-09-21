@@ -192,12 +192,9 @@ class MultiEntryBlock(CFGBlock):
 
     def replacePrev(self, other, otherName, replacement, replacementName):
         key = (other, otherName)
-        if not key in self._prev:
-            # print(key)
-            # print(self._prev)
-            # print(index = self._prev.index(key))
+        if key in self._prev:
             index = self._prev.index(key)
-        self._prev[index] = (replacement, replacementName)
+            self._prev[index] = (replacement, replacementName)
 
     def reverse(self):
         return [p[0] for p in self._prev]

@@ -227,19 +227,30 @@ import collections
 
 def evaluate(compiler):
     with compiler.console.scope("shape analysis"):
+        # Access interface and liveCode through program if available
+        if hasattr(compiler, 'program') and compiler.program:
+            interface = compiler.program.interface
+            liveCode = compiler.program.liveCode
+            storeGraph = compiler.program.storeGraph
+        else:
+            # Fallback to direct attributes (for backward compatibility)
+            interface = compiler.interface
+            liveCode = compiler.liveCode
+            storeGraph = compiler.storeGraph
+            
         regions = regionanalysis.evaluate(
-            compiler.extractor, compiler.interface.entryPoint, compiler.liveCode
+            compiler.extractor, interface.entryPoint, liveCode
         )
 
         rbsa = RegionBasedShapeAnalysis(
             compiler.extractor,
-            compiler.storeGraph.canonical,
-            HeapInformationProvider(compiler.storeGraph, regions),
+            storeGraph.canonical,
+            HeapInformationProvider(storeGraph, regions),
         )
 
-        rbsa.buildStructures(compiler.interface.entryCode())
+        rbsa.buildStructures(interface.entryCode())
 
-        for ep in compiler.interface.entryPoint:
+        for ep in interface.entryPoint:
             rbsa.addEntryPoint(
                 ep.code,
                 ep.selfarg.getObject(compiler.extractor),

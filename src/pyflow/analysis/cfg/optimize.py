@@ -36,9 +36,12 @@ class CFGOptPost(TypeDispatcher):
             node.redirectEntries(suite)
 
             # TODO don't remove prev, redirect?
-            normal[0].removePrev(node, normal[1])
-            culled[0].removePrev(node, culled[1])
-            suite.setExit("normal", normal[0])
+            if normal[0] is not None:
+                normal[0].removePrev(node, normal[1])
+            if culled[0] is not None:
+                culled[0].removePrev(node, culled[1])
+            if normal[0] is not None:
+                suite.setExit("normal", normal[0])
 
             # Process the suite
             self(suite)

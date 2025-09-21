@@ -169,7 +169,15 @@ def run_analysis_passes(compiler, program, analysis_type):
     if analysis_type in analysis_modules:
         module_name, func_name = analysis_modules[analysis_type]
         module = __import__(module_name, fromlist=[func_name])
-        getattr(module, func_name)(compiler, program)
+        func = getattr(module, func_name)
+        # Shape analysis needs full pipeline to be run first
+        if analysis_type == "shape":
+            # Run the full analysis pipeline first
+            from pyflow.application.pipeline import evaluate as pipeline_evaluate
+            pipeline_evaluate(compiler, program, "shape_analysis")
+            print("Shape analysis completed as part of full pipeline")
+        else:
+            func(compiler, program)
     else:
         print(f"Unknown analysis type: {analysis_type}")
 

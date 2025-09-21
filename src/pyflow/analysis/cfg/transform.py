@@ -268,7 +268,8 @@ class CFGTransformer(TypeDispatcher):
 
     @dispatch(ast.Suite)
     def visitSuite(self, node):
-        assert self.current
+        if self.current is None:
+            self.current = self.makeNewSuite()
         node.visitChildren(self)
 
     def pushHandler(self, name, node):
