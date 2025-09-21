@@ -1,4 +1,4 @@
-import ast
+from pyflow.language.python import ast
 from pyflow.util.python import apply
 
 

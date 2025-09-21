@@ -22,11 +22,13 @@ class MarkLocals(TypeDispatcher):
 
     @dispatch(ast.Local)
     def visitLocal(self, node):
-        self.flow.define(node, top)
+        if self.flow._current is not None:
+            self.flow.define(node, top)
 
     @dispatch(ast.GetGlobal, ast.SetGlobal)
     def visitGlobalOp(self, node):
-        self.flow.define(self.selfparam, top)
+        if self.flow._current is not None:
+            self.flow.define(self.selfparam, top)
         node.visitChildren(self)
 
     @defaultdispatch

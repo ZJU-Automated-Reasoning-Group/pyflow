@@ -609,12 +609,14 @@ class Extractor:
         
         elif isinstance(node, python_ast.Call):
             # Handle function calls
-            func = self._convert_expression(node.func)
-            args = [self._convert_expression(arg) for arg in node.args]
+            func = self._convert_expression_safe(node.func)
+            args = [self._convert_expression_safe(arg) for arg in node.args]
             keywords = []
             if node.keywords:
                 for kw in node.keywords:
-                    keywords.append((kw.arg, self._convert_expression(kw.value)))
+                    if kw.arg is not None:  # Skip **kwargs
+                        converted_value = self._convert_expression_safe(kw.value)
+                        keywords.append((kw.arg, converted_value))
             
             return pyflow_ast.Call(func, args, keywords, None, None)
         

@@ -97,6 +97,7 @@ class ReverseFlowTraverse(TypeDispatcher):
         merged, changed = meet(self.meet, tf, ff)
         self.flow.restore(merged)
 
+        # Process condition with proper flow context
         condition = self(node.condition)
 
         return ast.Switch(condition, t, f)

@@ -90,8 +90,10 @@ class ExtractDataflow(TypeDispatcher):
 
         if self.doOnce(node):
             op = self.contextOp(node)
+            # Filter out None values from kwds
+            filtered_kwds = [kw for kw in kwds if kw is not None and (not isinstance(kw, (list, tuple)) or (len(kw) >= 2 and kw[0] is not None))]
             constraints.CallConstraint(
-                self.system, op, expr, args, kwds, vargs, kargs, targets
+                self.system, op, expr, args, filtered_kwds, vargs, kargs, targets
             )
         return targets
 
@@ -145,11 +147,14 @@ class ExtractDataflow(TypeDispatcher):
 
     @dispatch(list)
     def visitList(self, node):
-        return [self(child) for child in node]
+        return [self(child) for child in node if child is not None]
 
     @dispatch(tuple)
     def visitTuple(self, node):
-        return tuple([self(child) for child in node])
+        # Filter out tuples where the first element is None (invalid keyword args)
+        if len(node) >= 2 and node[0] is None:
+            return None
+        return tuple([self(child) for child in node if child is not None])
 
     @dispatch(ast.Call)
     def visitCall(self, node, targets=None):

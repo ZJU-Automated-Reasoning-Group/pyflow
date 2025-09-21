@@ -107,6 +107,10 @@ class AssignmentConstraint(Constraint):
 
     def __init__(self, sys, sourceslot, destslot):
         assert isinstance(sourceslot, storegraph.SlotNode), sourceslot
+        # Handle DoNotCare case - if destslot is DoNotCare, we don't need to create this constraint
+        if destslot is analysis.cpasignature.DoNotCare:
+            return
+        
         assert isinstance(destslot, storegraph.SlotNode), destslot
 
         self.sourceslot = sourceslot

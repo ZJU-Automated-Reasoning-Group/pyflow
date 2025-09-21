@@ -489,6 +489,11 @@ class FoldTraverse(TypeDispatcher):
     def visitLeaf(self, node):
         return node
 
+    @dispatch(list)
+    def visitList(self, node):
+        # Handle raw Python lists that might appear in the AST
+        return [self(item) for item in node if hasattr(item, 'rewriteChildren')]
+
     @defaultdispatch
     def default(self, node):
         # Bottom up

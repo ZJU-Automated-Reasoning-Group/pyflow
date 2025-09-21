@@ -132,8 +132,13 @@ class DefUseVisitor(TypeDispatcher):
         for arg in node.args:
             self.use(node, arg)
 
-        for name, arg in node.kwds:
-            self.use(node, arg)
+        for item in node.kwds:
+            if isinstance(item, tuple) and len(item) == 2:
+                name, arg = item
+                self.use(node, arg)
+            else:
+                # Handle case where kwds contains single values instead of tuples
+                self.use(node, item)
 
         if node.vargs:
             self.use(node, node.vargs)

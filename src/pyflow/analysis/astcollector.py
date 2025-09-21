@@ -76,6 +76,14 @@ class GetOps(TypeDispatcher):
         node.visitChildren(self)
         self.ops.append(node)
 
+    @dispatch(list)
+    def visitList(self, node):
+        # Handle raw Python lists that might appear in the AST
+        for item in node:
+            if hasattr(item, 'visitChildren'):
+                self(item)
+            # For non-AST items, just skip them
+
     def process(self, node):
         # This is a shared node, so force traversal
         node.visitChildrenForced(self)
