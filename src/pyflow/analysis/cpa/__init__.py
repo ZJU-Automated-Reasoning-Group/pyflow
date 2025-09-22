@@ -483,6 +483,7 @@ class InterproceduralDataflow(object):
             elif name.isExisting():
                 lclLUT[(name.code, name.object)][name.context] = slot
         self.lclLUT = lclLUT
+        
 
     def annotateOps(self, code, contexts, ops, cloner):
         for op in ops:
@@ -506,6 +507,7 @@ class InterproceduralDataflow(object):
             else:
                 contextLclLUT = self.lclLUT[(code, lcl)]
                 newlcl = cloner.lcl(lcl)
+            
             references = self.collectContexts(contextLclLUT, contexts)
 
             newlcl.rewriteAnnotation(references=references)

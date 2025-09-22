@@ -309,8 +309,7 @@ def run_ir_dump(input_path: Path, args):
         with console.scope("extraction"):
             extractProgram(compiler, program)
 
-        # Always translate the interface for the analysis pipeline
-        program.interface.translate(compiler.extractor)
+        # Interface translation is now handled by extractProgram
         
         # Use the extracted functions directly for IR dumping
         if program.liveCode:

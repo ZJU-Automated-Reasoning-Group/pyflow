@@ -52,7 +52,7 @@ def run_analysis(input_path, args):
         with console.scope("extraction"):
             extractProgram(compiler, program)
 
-        program.interface.translate(compiler.extractor)
+        # Interface translation is now handled by extractProgram
         if program.interface.func:
             print(
                 f"Created {len(program.interface.entryPoint)} entry points from {len(program.interface.func)} functions"

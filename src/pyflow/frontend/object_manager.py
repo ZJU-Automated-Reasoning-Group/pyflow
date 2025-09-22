@@ -26,6 +26,8 @@ class ObjectManager:
         # Create an Object wrapper for the Python object
         try:
             pyflow_obj = Object(obj)
+            # Ensure the object is properly loaded with its type
+            self.ensure_loaded(pyflow_obj)
             self._object_cache[obj] = pyflow_obj
             return pyflow_obj
         except Exception as e:
@@ -59,8 +61,14 @@ class ObjectManager:
         # If this object doesn't have a type set, we need to initialize it
         if not hasattr(obj, "type") or obj.type is None:
             if hasattr(obj, "pyobj"):
-                # Set the type to be the type of the Python object
-                obj.type = self.get_object(type(obj.pyobj))
+                # Prevent recursion for type objects - type(type) is type itself
+                if obj.pyobj is type:
+                    # For the type class itself, we can't set a type without recursion
+                    # Leave it as None or handle specially
+                    pass  # Don't set type for the type class itself
+                else:
+                    # Set the type to be the type of the Python object
+                    obj.type = self.get_object(type(obj.pyobj))
 
         # If this is a type object and doesn't have typeinfo, create it
         if obj.isType() and (not hasattr(obj, "typeinfo") or obj.typeinfo is None):

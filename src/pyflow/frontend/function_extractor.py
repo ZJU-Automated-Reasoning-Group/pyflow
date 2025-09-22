@@ -7,6 +7,7 @@ to PyFlow's internal representation for static analysis.
 
 import ast as python_ast
 import inspect
+import textwrap
 from typing import Any, Optional
 
 from pyflow.language.python import ast as pyflow_ast
@@ -47,6 +48,13 @@ class FunctionExtractor:
                 if self.verbose:
                     print(f"DEBUG: Could not get source code for {func.__name__}")
                 return self._create_minimal_code(func)
+
+            # Dedent the source code to handle class-level indentation
+            try:
+                source = textwrap.dedent(source)
+            except Exception as e:
+                if self.verbose:
+                    print(f"DEBUG: Error dedenting source for {func.__name__}: {e}")
 
             # Parse it into a Python AST
             tree = python_ast.parse(source)

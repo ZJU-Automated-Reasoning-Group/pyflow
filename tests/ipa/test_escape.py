@@ -1,9 +1,8 @@
 from .base import TestIPABase
-
 from pyflow.analysis.ipa import escape
 from pyflow.analysis.ipa.escape import objectescape
 from pyflow.analysis.ipa.constraints import qualifiers
-
+import unittest
 
 class TestObjectEscape(TestIPABase):
     def setUp(self):
@@ -104,3 +103,7 @@ class TestObjectEscape(TestIPABase):
 
         self.assertFlags(o1, objectescape.escapeParam | objectescape.escapeReturn)
         self.assertFlags(o2, objectescape.escapeParam)
+
+
+if __name__ == "__main__":
+    unittest.main()

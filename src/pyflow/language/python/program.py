@@ -30,7 +30,10 @@ class AbstractObject(ProgramDecl):
         return False
 
     def isAbstract(self):
-        return self.type is not None and self.type.typeinfo.abstractInstance == self
+        return (self.type is not None and 
+                hasattr(self.type, 'typeinfo') and 
+                self.type.typeinfo is not None and 
+                self.type.typeinfo.abstractInstance == self)
 
     def isConcrete(self):
         return not self.isAbstract()

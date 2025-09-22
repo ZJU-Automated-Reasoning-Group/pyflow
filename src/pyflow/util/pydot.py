@@ -1005,6 +1005,25 @@ class Edge(Common, object):
 
         return False
 
+    def __hash__(self):
+        """Hash method for Edge objects.
+        
+        This method makes Edge objects hashable so they can be used in sets.
+        The hash is based on the source and destination nodes, which is
+        consistent with the __eq__ method.
+        """
+        # For undirected graphs, we need to ensure that A->B and B->A have the same hash
+        if self.get_parent_graph().get_top_graph_type() == "graph":
+            # For undirected graphs, sort the nodes to ensure consistent hashing
+            source, dest = self.get_source(), self.get_destination()
+            if source < dest:
+                return hash((source, dest))
+            else:
+                return hash((dest, source))
+        else:
+            # For directed graphs, order matters
+            return hash((self.get_source(), self.get_destination()))
+
     def parse_node_ref(self, node_str):
 
         if not isinstance(node_str, str):
@@ -1955,7 +1974,7 @@ class Dot(Graph):
         stdout.close()
 
         if stdout_output:
-            stdout_output = "".join(stdout_output)
+            stdout_output = b"".join(stdout_output)
 
         if not stderr.closed:
             stderr_output = list()
@@ -1967,7 +1986,7 @@ class Dot(Graph):
             stderr.close()
 
             if stderr_output:
-                stderr_output = "".join(stderr_output)
+                stderr_output = b"".join(stderr_output)
 
         # pid, status = os.waitpid(p.pid, 0)
         status = p.wait()
@@ -1975,10 +1994,10 @@ class Dot(Graph):
         if status != 0:
             raise InvocationException(
                 "Program terminated with status: %d. stderr follows: %s"
-                % (status, stderr_output)
+                % (status, stderr_output.decode('utf-8') if stderr_output else '')
             )
         elif stderr_output:
-            print(stderr_output)
+            print(stderr_output.decode('utf-8'))
 
         # For each of the image files...
         #

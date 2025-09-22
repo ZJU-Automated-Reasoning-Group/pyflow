@@ -56,13 +56,22 @@ class TestCPA(unittest.TestCase):
         result = pyflow.analysis.cpa.evaluate(compiler, program)
 
         # Check argument and return types
-        funcobj, funcast = compiler.extractor.getObjectCall(func)
+        # Get the Code object from the program's liveCode (the one processed by CPA)
+        func_code = None
+        for code in program.liveCode:
+            if code.name == func.__name__:
+                func_code = code
+                break
+        
+        if func_code is None:
+            self.fail(f"Could not find function {func.__name__} in program.liveCode")
+        
         types = set([compiler.extractor.getObject(int)])
 
-        for param in funcast.codeparameters.params:
+        for param in func_code.codeparameters.params:
             self.assertLocalRefTypes(param, types)
 
-        for param in funcast.codeparameters.returnparams:
+        for param in func_code.codeparameters.returnparams:
             self.assertLocalRefTypes(param, types)
 
 

@@ -210,3 +210,10 @@ def extractProgram(compiler: CompilerContext, program: Program) -> None:
         # Single file extraction (existing behavior)
         if compiler.console:
             compiler.console.output("Program extraction complete")
+    
+    # Process the interface declarations (functions and classes)
+    if hasattr(program, 'interface') and program.interface:
+        if not program.interface.translated:
+            program.interface.translate(compiler.extractor)
+            # Set entry points from the interface
+            program.entryPoints = program.interface.entryPoint
