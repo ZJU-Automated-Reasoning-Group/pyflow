@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - Commented out to allow src/pyflow/lib/ to be tracked
+# lib/
 lib64/
 parts/
 sdist/
