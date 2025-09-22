@@ -5,15 +5,21 @@ CLI functionality for call graph analysis.
 import sys
 from pathlib import Path
 
-from pyflow.application.context import Context
-from pyflow.application.program import Program
-from .extractor import CallGraphExtractor
+from .algorithms.registry import registry
 from .formats import generate_text_output, generate_dot_output, generate_json_output
 
 
 def run_callgraph(input_path, args):
     """Build and visualize call graphs from Python code."""
     try:
+        # Handle list algorithms option
+        if args.list_algorithms:
+            print("Available call graph algorithms:")
+            print("=" * 40)
+            for name, info in registry.list_all_info().items():
+                print(f"{name}: {info['description']}")
+            return 0
+
         if not input_path.exists() or input_path.suffix != ".py":
             print(f"Error: '{input_path}' is not a valid Python file", file=sys.stderr)
             return 1
@@ -21,9 +27,10 @@ def run_callgraph(input_path, args):
         with open(input_path, "r") as f:
             source_code = f.read()
 
-        # Try to use the full callgraph implementation
+        # Try to use the selected algorithm
         try:
-            extractor = CallGraphExtractor(verbose=args.verbose)
+            algorithm_class = registry.get_algorithm(args.algorithm)
+            extractor = algorithm_class(verbose=args.verbose)
             call_graph = extractor.extract_from_source(source_code, args)
 
             format_generators = {
@@ -38,9 +45,9 @@ def run_callgraph(input_path, args):
 
             output = format_generators[args.format](call_graph, args)
 
-        except ImportError:
-            # Simple fallback
-            output = generate_simple_callgraph_output(source_code)
+        except (ImportError, ValueError) as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
 
         # Write output
         if args.output:
@@ -62,22 +69,6 @@ def run_callgraph(input_path, args):
         return 1
 
 
-def generate_simple_callgraph_output(source_code):
-    """Generate a simple call graph output as fallback."""
-    lines = source_code.split("\n")
-    functions = [
-        line.strip().split("(")[0].replace("def ", "")
-        for line in lines
-        if line.strip().startswith("def ")
-    ]
-
-    output = "Call Graph\n==========\n\nFunctions found:\n"
-    for func in functions:
-        output += f"- {func}\n"
-
-    return output
-
-
 def add_callgraph_parser(subparsers):
     """Add call graph subcommand to the argument parser."""
     parser = subparsers.add_parser(
@@ -85,6 +76,22 @@ def add_callgraph_parser(subparsers):
     )
 
     parser.add_argument("input", type=Path, help="Python file to analyze")
+
+    # Algorithm selection
+    available_algorithms = registry.list_algorithms()
+    parser.add_argument(
+        "--algorithm",
+        "-a",
+        choices=available_algorithms,
+        default=available_algorithms[0] if available_algorithms else "ast",
+        help=f"Call graph algorithm to use (default: {available_algorithms[0] if available_algorithms else 'ast'})",
+    )
+
+    parser.add_argument(
+        "--list-algorithms",
+        action="store_true",
+        help="List all available algorithms and exit",
+    )
 
     parser.add_argument(
         "--format",

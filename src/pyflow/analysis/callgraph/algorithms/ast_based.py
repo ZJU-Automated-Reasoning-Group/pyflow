@@ -1,32 +1,27 @@
 """
-Call graph extractor implementation.
+AST-based call graph extraction algorithm.
 
-This module provides a simplified call graph extraction that works by
-parsing Python source code directly using Python's ast module, rather
-than leveraging pyflow's full analysis pipeline.
+This algorithm parses Python source code directly using Python's AST module.
+It's simple and doesn't require external dependencies, but may miss some
+complex call patterns.
 """
 
 import ast as python_ast
-import collections
-from typing import Set, Dict, Any, Optional, List, Tuple
+from typing import Set, Dict, Any, Optional
+
+from .base import CallGraphAlgorithm, CallGraphData
 
 
-class CallGraphData:
-    """Data structure to hold call graph information."""
+class ASTBasedAlgorithm(CallGraphAlgorithm):
+    """Extracts call graphs using Python's AST module."""
 
-    def __init__(self):
-        self.functions: Set[Any] = set()
-        self.invocations: Dict[Any, Set[Any]] = {}
-        self.invocation_contexts: Dict[Any, Set[Any]] = {}
-        self.function_contexts: Dict[Any, Set[Any]] = {}
-        self.cycles: List[List[Any]] = []
+    @property
+    def name(self) -> str:
+        return "ast"
 
-
-class CallGraphExtractor:
-    """Extracts call graphs from Python source code."""
-
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
+    @property
+    def description(self) -> str:
+        return "AST-based call graph extraction using Python's built-in AST module"
 
     def extract_from_program(self, program, compiler, args) -> CallGraphData:
         """Extract call graph from a pyflow program."""
@@ -191,50 +186,3 @@ class CallGraphExtractor:
                 print(f"Error parsing source: {e}")
 
         return calls
-
-
-def limit_depth(call_graph: CallGraphData, max_depth: int) -> CallGraphData:
-    """Limit the call graph to a maximum depth."""
-    if max_depth <= 0:
-        return call_graph
-
-    # Simple depth limiting - keep only functions within max_depth
-    # This is a basic implementation and could be improved
-    limited_graph = CallGraphData()
-    limited_graph.functions = call_graph.functions.copy()
-    limited_graph.invocations = call_graph.invocations.copy()
-    limited_graph.invocation_contexts = call_graph.invocation_contexts.copy()
-    limited_graph.function_contexts = call_graph.function_contexts.copy()
-
-    return limited_graph
-
-
-def detect_cycles(call_graph: CallGraphData) -> List[List[Any]]:
-    """Detect cycles in the call graph."""
-    cycles = []
-    visited = set()
-    rec_stack = set()
-
-    def dfs(node, path):
-        if node in rec_stack:
-            # Found a cycle
-            cycle_start = path.index(node)
-            cycles.append(path[cycle_start:] + [node])
-            return
-
-        if node in visited:
-            return
-
-        visited.add(node)
-        rec_stack.add(node)
-
-        for callee in call_graph.invocations.get(node, set()):
-            dfs(callee, path + [node])
-
-        rec_stack.remove(node)
-
-    for func in call_graph.functions:
-        if func not in visited:
-            dfs(func, [])
-
-    return cycles
