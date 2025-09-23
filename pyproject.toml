@@ -50,7 +50,7 @@ test = [
 ]
 
 [project.scripts]
-pyflow = "pyflow.cli_main:main"
+pyflow = "pyflow.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from .optimize import run_analysis, list_optimization_passes, add_optimize_parser
 from .ir import run_ir_dump, add_ir_parser
+from .security import run_security_analysis, add_security_parser
 from pyflow.analysis.callgraph import run_callgraph, add_callgraph_parser
 
 
@@ -33,6 +34,9 @@ def main():
     
     # IR dumping command - use the modular parser
     add_ir_parser(subparsers)
+    
+    # Security analysis command - use the modular parser
+    add_security_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -54,6 +58,9 @@ def main():
             print("Error: input_path is required for IR dumping", file=sys.stderr)
             sys.exit(1)
         input_path = Path(args.input_path)
+    elif args.command == "security":
+        # Security command handles its own targets
+        input_path = None
     else:
         input_path = None
 
@@ -69,6 +76,8 @@ def main():
         return run_callgraph(input_path, args)
     elif args.command == "ir":
         run_ir_dump(input_path, args)
+    elif args.command == "security":
+        return run_security_analysis(args.targets, args)
     else:
         parser.print_help()
         sys.exit(1)
