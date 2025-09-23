@@ -61,35 +61,6 @@ def dloop():
     return count
 
 
-# def parallax(self, e, texCoord, nm, amount):
-# 		tse = self.tangentSpaceEye(e)
-#
-# 		nSteps = 16
-# 		dir = tse.xy/(nSteps*tse.z*8.0)
-# 		stepDepth = 1.0/(nSteps)
-#
-# 		depth = 1.0
-# 		diff0 = depth-nm.texture(texCoord).w
-# 		diff1 = diff0
-#
-# 		offset = vec2(0.5)
-# 		backtrack = 0.5
-#
-# 		if diff1 > 0.0:
-# 			while diff1 > 0.0:
-# 				texCoord += dir
-# 				offset += dir
-# 				depth -= stepDepth
-#
-# 				diff0 = diff1
-# 				diff1 = depth-nm.texture(texCoord).w
-#
-# 			backtrack = diff1/(diff0 - diff1)
-# 			offset +=  dir*backtrack
-#
-# 		return texCoord, vec3(backtrack, -backtrack, 0.0)
-
-
 def parallax(tse, td):
     stepDepth = 1.0 / 16.0
     depth = 1.0
