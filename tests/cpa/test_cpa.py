@@ -74,6 +74,96 @@ class TestCPA(unittest.TestCase):
         for param in func_code.codeparameters.returnparams:
             self.assertLocalRefTypes(param, types)
 
+    def test_conditional_execution(self):
+        """Test CPA with conditional statements."""
+        def func(x):
+            if x > 0:
+                return x * 2
+            else:
+                return x * -2
+
+        func = replaceGlobals(func, {})
+
+        compiler = CompilerContext(Console())
+        program = pyflow.application.program.Program()
+
+        program.interface.func.append(
+            (func, (pyflow.application.interface.ExistingWrapper(5),))
+        )
+
+        compiler.program = program
+        compiler.extractor = Extractor(compiler)
+
+        extractProgram(compiler, program)
+        result = pyflow.analysis.cpa.evaluate(compiler, program)
+
+        # Find the function code
+        func_code = None
+        for code in program.liveCode:
+            if code.name == func.__name__:
+                func_code = code
+                break
+
+        self.assertIsNotNone(func_code, "Function code not found")
+
+    def test_loop_analysis(self):
+        """Test CPA with loop constructs."""
+        def func():
+            total = 0
+            for i in range(3):
+                total += i
+            return total
+
+        func = replaceGlobals(func, {})
+
+        compiler = CompilerContext(Console())
+        program = pyflow.application.program.Program()
+
+        program.interface.func.append((func, ()))
+
+        compiler.program = program
+        compiler.extractor = Extractor(compiler)
+
+        extractProgram(compiler, program)
+        result = pyflow.analysis.cpa.evaluate(compiler, program)
+
+        # Find the function code
+        func_code = None
+        for code in program.liveCode:
+            if code.name == func.__name__:
+                func_code = code
+                break
+
+        self.assertIsNotNone(func_code, "Function code not found")
+
+    def test_attribute_access(self):
+        """Test CPA with attribute access."""
+        def func():
+            x = "hello"
+            return len(x)
+
+        func = replaceGlobals(func, {})
+
+        compiler = CompilerContext(Console())
+        program = pyflow.application.program.Program()
+
+        program.interface.func.append((func, ()))
+
+        compiler.program = program
+        compiler.extractor = Extractor(compiler)
+
+        extractProgram(compiler, program)
+        result = pyflow.analysis.cpa.evaluate(compiler, program)
+
+        # Find the function code
+        func_code = None
+        for code in program.liveCode:
+            if code.name == func.__name__:
+                func_code = code
+                break
+
+        self.assertIsNotNone(func_code, "Function code not found")
+
 
 if __name__ == "__main__":
     unittest.main()

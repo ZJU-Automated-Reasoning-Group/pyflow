@@ -1,6 +1,26 @@
-"""Control Flow Graph (CFG) analysis modules.
+"""Control Flow Graph (CFG) analysis for PyFlow.
 
-This package contains modules for constructing, analyzing, and manipulating
-control flow graphs in PyFlow. It includes dominance analysis, SSA form
-conversion, and various CFG transformations.
+This package provides comprehensive control flow graph construction, analysis,
+and transformation capabilities for Python programs.
+
+Key components:
+- CFG construction from AST with control flow handling
+- Dominance analysis and dominance frontiers
+- Static Single Assignment (SSA) form construction
+- Structural analysis for loops and control structures
+- CFG transformations and optimizations
+- Dead code elimination and code motion
+- Graph algorithms for CFG manipulation
+
+The CFG module is primarily used for:
+- Program optimization and transformation
+- Data flow analysis foundations
+- Control dependence analysis
+- Loop analysis and optimization
+- Dead code elimination
 """
+
+from . import (
+    transform, graph, dom, ssa, ssatransform, structuralanalysis,
+    optimize, simplify, inline, gc, dfs, dump, expandphi, killflow
+)

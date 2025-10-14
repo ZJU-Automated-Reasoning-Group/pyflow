@@ -113,8 +113,6 @@ class ASTCloner(TypeDispatcher):
     @dispatch(
         ast.Assign,
         ast.Discard,
-        ast.AugmentedAssign,
-        ast.Special,
         ast.BinaryOp,
         ast.Call,
         ast.Phi,
@@ -181,12 +179,20 @@ class CFGCloner(object):
 
         newG = cfg.Code()
 
-        # HACK create an empty behavior?
-        newG.code = ast.BehaviorDecl(
+        # Create a basic code object for inlining
+        codeparams = ast.CodeParameters(
+            None,  # selfparam
+            [self.lcl(p) for p in g.code.params],  # params
+            [],  # paramnames
+            [],  # defaults
+            None,  # vparam
+            None,  # kparam
+            [self.lcl(g.returnParam)]  # returnparams
+        )
+        newG.code = ast.Code(
             g.code.name + "_clone",
-            [self.lcl(p) for p in g.code.params],
-            g.code.returnType,
-            ast.Suite([]),
+            codeparams,
+            ast.Suite([])
         )
 
         newG.returnParam = self.lcl(g.returnParam)
@@ -263,10 +269,6 @@ class InlineTransform(TypeDispatcher):
                 # POSTAMBLE transfer the return value
                 if isinstance(op, ast.Assign):
                     current.ops.append(ast.Assign(op.target, cloned.returnParam))
-                elif isinstance(op, ast.AugmentedAssign):
-                    current.ops.append(
-                        ast.AugmentedAssign(op.target, op.op, cloned.returnParam)
-                    )
             else:
                 current.ops.append(op)
 
@@ -289,7 +291,7 @@ class InlineTransform(TypeDispatcher):
                 errorTerminal.simplify()
 
     def getInline(self, stmt):
-        if isinstance(stmt, (ast.Assign, ast.Discard, ast.AugmentedAssign)):
+        if isinstance(stmt, (ast.Assign, ast.Discard)):
             expr = stmt.expr
             if isinstance(expr, ast.Call):
                 expr = expr.expr

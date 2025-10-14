@@ -1,3 +1,19 @@
+"""Flow-Sensitive Data Flow (FSDF) analysis for PyFlow.
+
+This package provides flow-sensitive data flow analysis capabilities that build
+correlated data flow networks and track read/modify relationships in Python programs.
+
+Key components:
+- ReadModifyInfo: Tracks local and heap read/modify operations
+- FindMergeSplit: Identifies merge and split points in data flow
+- BuildDataflowNetwork: Constructs data flow networks from AST
+- Canonical naming: Provides canonical names for locals and fields
+- Correlated data flow: Builds flow-sensitive data flow relationships
+
+The FSDF analysis enables precise tracking of data flow through complex
+control structures and across function boundaries.
+"""
+
 from __future__ import print_function
 
 from pyflow.util.typedispatch import *

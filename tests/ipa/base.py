@@ -44,8 +44,8 @@ class TestIPABase(unittest.TestCase):
             lcl.updateValues(frozenset(values))
         return lcl
 
-    def assertIsInstance(self, obj, cls):
-        self.assertTrue(isinstance(obj, cls), "expected %r, got %r" % (cls, type(obj)))
+    def assertIsInstance(self, obj, cls, msg=None):
+        self.assertTrue(isinstance(obj, cls), msg or "expected %r, got %r" % (cls, type(obj)))
 
     def const(self, pyobj, qualifier=qualifiers.HZ):
         obj = self.extractor.getObject(pyobj)
