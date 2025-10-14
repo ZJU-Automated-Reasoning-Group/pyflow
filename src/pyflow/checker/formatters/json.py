@@ -144,5 +144,5 @@ def report(manager, fileobj, sev_level, conf_level, lines=-1):
     with fileobj:
         fileobj.write(result)
 
-    if fileobj.name != sys.stdout.name:
+    if hasattr(fileobj, 'name') and fileobj.name != sys.stdout.name:
         LOG.info("JSON output written to file: %s", fileobj.name)

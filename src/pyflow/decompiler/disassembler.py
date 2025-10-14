@@ -5,19 +5,19 @@ from dis import findlinestarts
 
 flowControlOps = [opmap['RETURN_VALUE'],
 		  opmap['RAISE_VARARGS'],
-		  opmap['FOR_ITER'],
-		  opmap['BREAK_LOOP']]
+		  opmap['FOR_ITER']]
+# BREAK_LOOP no longer exists in Python 3
 
 flowControlOps.extend(hasjrel)
 flowControlOps.extend(hasjabs)
-#flowControlOps.remove(opmap['SETUP_LOOP'])
+# SETUP_LOOP no longer exists in Python 3, handled by SETUP_FINALLY
 
 flowControlOps = frozenset(flowControlOps)
 
-blockOps = frozenset((opmap['POP_BLOCK'], opmap['SETUP_LOOP'], opmap['SETUP_EXCEPT'], opmap['SETUP_FINALLY'], opmap['END_FINALLY']))
+blockOps = frozenset((opmap['POP_BLOCK'], opmap['SETUP_FINALLY']))
 
 
-stackOps = frozenset((opmap['POP_TOP'], opmap['ROT_TWO'], opmap['ROT_THREE'], opmap['DUP_TOP'], opmap['ROT_FOUR'], opmap['DUP_TOPX']))
+stackOps = frozenset((opmap['POP_TOP'],))
 
 
 
@@ -86,13 +86,13 @@ def disassemble(co):
 			line = linestarts[i]
 
 		c = code[i]
-		op = ord(c)
+		op = c
 		offset = i
 		i = i+1
 
 		if op >= HAVE_ARGUMENT:
 			needsFixup = False
-			oparg = ord(code[i]) + ord(code[i+1])*256 + extended_arg
+			oparg = code[i] + code[i+1]*256 + extended_arg
 			extended_arg = 0
 			i = i+2
 

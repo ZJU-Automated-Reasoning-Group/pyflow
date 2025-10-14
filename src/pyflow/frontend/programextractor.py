@@ -12,6 +12,7 @@ the dir in src/pyflow/decompile)
 """
 
 import ast
+import re
 from typing import Any, Dict, List, Optional
 
 from pyflow.application.program import Program
@@ -206,10 +207,24 @@ class Extractor:
         if hasattr(self, "source_code") and self.source_code:
             if isinstance(self.source_code, dict):
                 # Multiple files - try to find the source for this function
-                for filename, file_source in self.source_code.items():
-                    if func.__name__ in file_source:
-                        source = file_source
-                        break
+                # First try to find the function by checking if it has a __code__ attribute
+                # that can help us identify which file it came from
+                func_file = None
+                if hasattr(func, '__code__') and hasattr(func.__code__, 'co_filename'):
+                    func_file = func.__code__.co_filename
+
+                if func_file and func_file in self.source_code:
+                    # We found the file this function came from
+                    source = self.source_code[func_file]
+                else:
+                    # Fallback: search for function name in source files
+                    # Use a more sophisticated approach to avoid false matches
+                    for filename, file_source in self.source_code.items():
+                        # Look for function definition pattern: def function_name(
+                        pattern = rf'\bdef\s+{re.escape(func.__name__)}\s*\('
+                        if re.search(pattern, file_source):
+                            source = file_source
+                            break
             else:
                 # Single source file
                 source = self.source_code

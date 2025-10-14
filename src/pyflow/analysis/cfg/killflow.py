@@ -56,7 +56,7 @@ class OpFlow(TypeDispatcher):
         node.visitChildren(self)
         self.assumePessimistic()
 
-    @dispatch(ast.BuildTuple, ast.Allocate)
+    @dispatch(ast.BuildTuple, ast.Allocate, ast.BuildMap)
     def visitBuildTuple(self, node):
         node.visitChildren(self)
         # No problems
@@ -69,6 +69,36 @@ class OpFlow(TypeDispatcher):
     @dispatch(ast.Discard, ast.Assign)
     def visitOK(self, node):
         node.visitChildren(self)
+
+    @dispatch(ast.For, ast.While)
+    def visitLoop(self, node):
+        node.visitChildren(self)
+        # Loops can have normal flow
+
+    @dispatch(ast.Break, ast.Continue)
+    def visitControlFlow(self, node):
+        # These affect control flow but don't generate errors
+        pass
+
+    @dispatch(ast.TryExceptFinally)
+    def visitTryExceptFinally(self, node):
+        node.visitChildren(self)
+        # Exception handling can have normal flow
+
+    @dispatch(ast.Raise)
+    def visitRaise(self, node):
+        node.visitChildren(self)
+        # Raises can cause abnormal flow but don't generate errors in analysis
+
+    @dispatch(ast.Assert)
+    def visitAssert(self, node):
+        node.visitChildren(self)
+        # Asserts can raise AssertionError but don't generate errors in analysis
+
+    @dispatch(ast.FunctionDef, ast.ClassDef)
+    def visitDefinition(self, node):
+        node.visitChildren(self)
+        # Definitions don't affect control flow
 
     def process(self, node):
         self.normal = True

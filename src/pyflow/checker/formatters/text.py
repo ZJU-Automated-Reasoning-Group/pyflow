@@ -147,5 +147,5 @@ def report(manager, fileobj, sev_level, conf_level, lines=-1):
     with fileobj:
         wrap_file_object(fileobj).write("\n".join(bits) + "\n")
 
-    if fileobj.name != sys.stdout.name:
+    if hasattr(fileobj, 'name') and fileobj.name != sys.stdout.name:
         LOG.info("Text output written to file: %s", fileobj.name)

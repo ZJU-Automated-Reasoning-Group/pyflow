@@ -103,6 +103,13 @@ class CFGTransformer(TypeDispatcher):
         ast.UnpackSequence,
         ast.InputBlock,
         ast.OutputBlock,
+        ast.BuildTuple,
+        ast.BuildList,
+        ast.BuildMap,
+        ast.Assert,
+        ast.Raise,
+        ast.FunctionDef,
+        ast.ClassDef,
     )
     def visitStatement(self, node):
         self.emit(node)
@@ -275,26 +282,53 @@ class CFGTransformer(TypeDispatcher):
         self.optimizeMerge(b)
         self.optimizeMerge(e)
 
+    @dispatch(ast.TryExceptFinally)
+    def visitTryExceptFinally(self, node):
+        """Handle try-except-finally blocks."""
+        # Process the try body
+        self(node.body)
+
+        # Process exception handlers
+        for handler in node.handlers:
+            if handler is not None:
+                self(handler)
+
+        # Process else clause if present
+        if node.else_ is not None:
+            self(node.else_)
+
+        # Process finally clause if present
+        if node.finally_ is not None:
+            self(node.finally_)
+
+    @dispatch(ast.ExceptionHandler)
+    def visitExceptionHandler(self, node):
+        """Handle exception handler blocks."""
+        # Process the handler body
+        self(node.body)
+
     @dispatch(ast.For)
     def visitFor(self, node):
-        self(node.initialize)
+        # Handle the new For loop structure from the expanded AST converter
+        # For(iterator, index, loopPreamble, bodyPreamble, body, else_)
 
+        # Process loop preamble and body preamble
+        if hasattr(node, 'loopPreamble') and node.loopPreamble:
+            self(node.loopPreamble)
+        if hasattr(node, 'bodyPreamble') and node.bodyPreamble:
+            self(node.bodyPreamble)
+
+        # Create merge point for loop entry
         merge = self.createMerge()
         self.attachCurrent(merge)
 
-        switch = self.createSwitchAfter(node.condition, merge)
+        # For loops don't have explicit conditions like while loops,
+        # but we can treat them as always true for now
+        loop_body_suite = self.makeNewSuite()
 
-        # Next iteration logic
-        c = self.createMerge()
-        c.setExit("normal", self.makeNewSuite())
-        self(node.next)
-        self.attachCurrent(merge)
+        b = cfg.Merge(self.region)  # Break target
 
-        switch.setExit("true", self.makeNewSuite())
-
-        b = cfg.Merge()
-
-        self.pushHandler("continue", c)
+        self.pushHandler("continue", merge)
         self.pushHandler("break", b)
 
         try:
@@ -302,15 +336,20 @@ class CFGTransformer(TypeDispatcher):
         except NoNormalFlow:
             pass
         else:
-            self.attachCurrent(c)
+            # Loop back to start
+            self.attachCurrent(merge)
 
         self.popHandler("continue")
         self.popHandler("break")
 
-        switch.setExit("false", b)
+        # Handle else clause if present
+        if hasattr(node, 'else_') and node.else_:
+            else_suite = self.makeNewSuite()
+            self(node.else_)
+            else_suite.setExit("normal", self.makeNewSuite())
 
         b.setExit("normal", self.makeNewSuite())
-        self.optimizeMerge(c)
+        self.optimizeMerge(merge)
         self.optimizeMerge(b)
 
     def optimizeMerge(self, m):

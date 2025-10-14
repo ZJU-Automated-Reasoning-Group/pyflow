@@ -32,6 +32,12 @@ def add_ir_parser(subparsers):
     parser.add_argument("--recursive", "-r", action="store_true", help="Recursively analyze subdirectories")
     parser.add_argument("--exclude", nargs="*", default=[], help="Patterns to exclude from analysis")
     parser.add_argument("--include", nargs="*", default=["*.py"], help="File patterns to include in analysis")
+
+    # Dependency resolution
+    parser.add_argument("--dependency-strategy",
+                       choices=["auto", "stubs", "noop", "strict", "ast_only"],
+                       default="auto",
+                       help="How to handle import dependencies (default: auto)")
     
     # Dump arguments
     parser.add_argument("--dump-ast", metavar="FUNCTION", help="Dump AST for the specified function name")
@@ -259,11 +265,19 @@ def find_python_files(directory, args):
 
 
 def create_interface_from_paths(python_files, args):
-    """Create a basic interface from multiple Python files."""
+    """Create a basic interface from multiple Python files using dependency resolver."""
     from pyflow.application import interface
+    from pyflow.frontend.dependency_resolver import DependencyResolver
 
     interface_decl = interface.InterfaceDeclaration()
     all_source_code = {}
+
+    # Create dependency resolver with user-specified strategy
+    resolver = DependencyResolver(
+        strategy=getattr(args, 'dependency_strategy', 'auto'),
+        verbose=args.verbose,
+        safe_modules=['math', 'os', 'sys', 're', 'json', 'datetime', 'collections']
+    )
 
     for file_path in python_files:
         try:
@@ -271,14 +285,14 @@ def create_interface_from_paths(python_files, args):
                 source = f.read()
             all_source_code[str(file_path)] = source
 
-            module_globals = {}
-            exec(source, module_globals)
+            # Use dependency resolver to extract functions
+            functions = resolver.extract_functions(source, str(file_path))
 
-            for name, obj in module_globals.items():
-                if callable(obj) and not name.startswith("_"):
-                    interface_decl.func.append((obj, []))
-                    if args.verbose:
-                        print(f"Added function '{name}' from {file_path}")
+            for func_name, func_obj in functions.items():
+                interface_decl.func.append((func_obj, []))
+                if args.verbose:
+                    print(f"Added function '{func_name}' from {file_path}")
+
         except Exception as e:
             if args.verbose:
                 print(f"Warning: Could not parse file {file_path}: {e}")

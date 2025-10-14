@@ -49,6 +49,15 @@ class FunctionExtractor:
                     print(f"DEBUG: Could not get source code for {func.__name__}")
                 return self._create_minimal_code(func)
 
+            # Try inspect.getsource first before falling back to provided source
+            try:
+                inspect_source = inspect.getsource(func)
+                if inspect_source and inspect_source.strip():
+                    source = inspect_source
+            except (OSError, TypeError):
+                # If inspect fails, use the provided source code
+                pass
+
             # Dedent the source code to handle class-level indentation
             try:
                 source = textwrap.dedent(source)

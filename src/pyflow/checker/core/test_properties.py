@@ -31,7 +31,7 @@ def test_id(id_val):
 def takes_config(*args):
     """Test function takes config decorator"""
     name = ""
-    
+
     def _takes_config(func):
         if not hasattr(func, "_takes_config"):
             func._takes_config = name
@@ -43,3 +43,8 @@ def takes_config(*args):
     else:
         name = args[0]
         return _takes_config
+
+
+def accepts_baseline(func):
+    """Decorator to mark formatter functions that can handle baseline data"""
+    return func

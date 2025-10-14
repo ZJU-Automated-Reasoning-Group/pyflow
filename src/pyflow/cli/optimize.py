@@ -57,7 +57,13 @@ def add_optimize_parser(subparsers):
     # Analysis options
     parser.add_argument("--analysis", "-a", choices=["all", "cpa", "ipa", "shape", "lifetime"],
                        default="all", help="Analysis type (default: all)")
-    
+
+    # Dependency resolution
+    parser.add_argument("--dependency-strategy",
+                       choices=["auto", "stubs", "noop", "strict", "ast_only"],
+                       default="auto",
+                       help="How to handle import dependencies (default: auto)")
+
     # File discovery
     parser.add_argument("--recursive", "-r", action="store_true", help="Recursively analyze subdirectories")
     parser.add_argument("--exclude", nargs="*", default=[], help="Exclude patterns (e.g., 'test_*', '__pycache__')")
@@ -104,12 +110,19 @@ def run_analysis(input_path, args):
         from pyflow.frontend.programextractor import Extractor
         compiler.extractor = Extractor(compiler, verbose=args.verbose, source_code=all_source_code)
 
+        print(f"DEBUG: Interface has {len(program.interface.func)} functions before extraction")
         # Extract and analyze
         with console.scope("extraction"):
             extractProgram(compiler, program)
 
+        print(f"DEBUG: Interface has {len(program.interface.func)} functions after extraction")
+        print(f"DEBUG: Interface entryPoints: {len(program.interface.entryPoint)}")
+        print(f"DEBUG: Program liveCode: {len(program.liveCode)}")
+        print(f"Found {len(program.interface.func)} functions in interface")
         if program.interface.func:
             print(f"Created {len(program.interface.entryPoint)} entry points from {len(program.interface.func)} functions")
+        else:
+            print("Warning: No functions found in interface - analysis may produce no results")
 
         # Run analysis
         with console.scope("analysis"):
@@ -156,11 +169,19 @@ def find_python_files(directory, args):
 
 
 def create_interface_from_paths(python_files, args):
-    """Create a basic interface from multiple Python files."""
+    """Create a basic interface from multiple Python files using dependency resolver."""
     from pyflow.application import interface
+    from pyflow.frontend.dependency_resolver import DependencyResolver
 
     interface_decl = interface.InterfaceDeclaration()
     all_source_code = {}
+
+    # Create dependency resolver with user-specified strategy
+    resolver = DependencyResolver(
+        strategy=getattr(args, 'dependency_strategy', 'auto'),
+        verbose=args.verbose,
+        safe_modules=['math', 'os', 'sys', 're', 'json', 'datetime', 'collections']
+    )
 
     for file_path in python_files:
         try:
@@ -168,20 +189,23 @@ def create_interface_from_paths(python_files, args):
                 source = f.read()
             all_source_code[str(file_path)] = source
 
-            module_globals = {}
-            exec(source, module_globals)
+            # Use dependency resolver to extract functions
+            functions = resolver.extract_functions(source, file_path)
 
-            for name, obj in module_globals.items():
-                if callable(obj) and not name.startswith("_"):
-                    interface_decl.func.append((obj, []))
-                    if args.verbose:
-                        print(f"Added function '{name}' from {file_path}")
+            for func_name, func_obj in functions.items():
+                interface_decl.func.append((func_obj, []))
+                if args.verbose:
+                    print(f"Added function '{func_name}' from {file_path}")
+
+            if args.verbose:
+                print(f"Found {len(functions)} callable objects in {file_path}: {list(functions.keys())}")
 
         except Exception as e:
             if args.verbose:
                 print(f"Warning: Could not parse file {file_path}: {e}")
 
     return interface_decl, all_source_code
+
 
 
 def run_analysis_passes(compiler, program, analysis_type):

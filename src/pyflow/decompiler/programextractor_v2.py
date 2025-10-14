@@ -103,7 +103,7 @@ class Extractor(object):
 
 
 		self.getsetMember = set()
-		self.getsetMember.add(xtypes.FunctionType.__dict__['func_defaults'])
+		self.getsetMember.add(xtypes.FunctionType.__dict__['__defaults__'])
 
 	def flatTypeDict(self, cls):
 		assert isinstance(cls, type)
