@@ -6,7 +6,7 @@
 
 ### The Constraint-based Analysis 
 
-Context-Sensitive, Flow-Sensitive
+Context-Sensitive, Flow-inensitive (?)
 
 Workflow:
 

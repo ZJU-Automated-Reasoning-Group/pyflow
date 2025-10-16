@@ -56,6 +56,9 @@ class ConvertCalls(TypeDispatcher):
         ast.While,
         ast.TypeSwitch,
         ast.TypeSwitchCase,
+        ast.FunctionDef,
+        ast.ClassDef,
+        ast.Raise,
     )
     def visitOK(self, node):
         return node.rewriteChildren(self)

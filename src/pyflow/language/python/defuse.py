@@ -286,6 +286,11 @@ class DefUseVisitor(TypeDispatcher):
     def visitLeaf(self, node):
         pass
 
+    @dispatch(ast.FunctionDef, ast.ClassDef)
+    def visitOK(self, node):
+        """Function and class definitions don't need special processing in defuse visitor."""
+        pass
+
     @dispatch(ast.GetSubscript)
     def visitGetSubscript(self, node):
         self.use(node, node.expr)

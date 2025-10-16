@@ -88,7 +88,7 @@ class Collapser(TypeDispatcher):
                 if node.traceback:
                     self.markPossible(node.traceback)
 
-    @dispatch(ast.Break, ast.Continue, ast.Local, ast.Existing, ast.Cell, ast.DoNotCare)
+    @dispatch(ast.Break, ast.Continue, ast.Local, ast.Existing, ast.Cell, ast.DoNotCare, str)
     def visitNOP(self, node):
         pass
 
@@ -554,6 +554,11 @@ class Collapser(TypeDispatcher):
     @dispatch(ast.Code)
     def visitCode(self, node):
         self.process(node.ast)
+
+    @dispatch(ast.FunctionDef, ast.ClassDef)
+    def visitOK(self, node):
+        """Function and class definitions don't need special processing in collapser."""
+        pass
 
 
 def evaluateCode(compiler, code, defs, uses):

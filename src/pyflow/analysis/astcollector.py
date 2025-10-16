@@ -44,6 +44,9 @@ class GetOps(TypeDispatcher):
         ast.TypeSwitch,
         ast.TypeSwitchCase,
         ast.Return,
+        ast.FunctionDef,
+        ast.ClassDef,
+        ast.Raise,
     )
     def visitOK(self, node):
         """Visit nodes that contain child nodes.

@@ -1,6 +1,18 @@
 from . import basic
 
 
+def intersect(doms, b1, b2):
+    finger1 = b1
+    finger2 = b2
+    while finger1 != finger2:
+        while finger1 > finger2:
+            finger1 = doms[finger1]
+
+    while finger2 > finger1:
+        finger2 = doms[finger2]
+    return finger1
+
+
 class ReversePostorderCrawler(object):
     def __init__(self, G, head):
         self.G = G
@@ -46,17 +58,6 @@ class ReversePostorderCrawler(object):
             except StopIteration:
                 self.order.append(stack[-1][0])
                 stack.pop()
-
-    def intersect(doms, b1, b2):
-        finger1 = b1
-        finger2 = b2
-        while finger1 != finger2:
-            while finger1 > finger2:
-                finger1 = doms[finger1]
-
-        while finger2 > finger1:
-            finger2 = doms[finger2]
-        return finger1
 
 
 def dominatorTree(G, head):
