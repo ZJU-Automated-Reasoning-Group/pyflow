@@ -20,7 +20,7 @@ def _report(value):
 
 
 @test.checks("Str")
-@test.test_id("B105")
+@test.with_id("B105")
 def hardcoded_password_string(context):
     """Check for hardcoded password strings"""
     node = context.node
@@ -49,7 +49,7 @@ def hardcoded_password_string(context):
 
 
 @test.checks("Call")
-@test.test_id("B106")
+@test.with_id("B106")
 def hardcoded_password_funcarg(context):
     """Check for hardcoded password function arguments"""
     # Look for "function(candidate='some_string')"
@@ -59,7 +59,7 @@ def hardcoded_password_funcarg(context):
 
 
 @test.checks("FunctionDef")
-@test.test_id("B107")
+@test.with_id("B107")
 def hardcoded_password_default(context):
     """Check for hardcoded password argument defaults"""
     # Look for "def function(candidate='some_string')"

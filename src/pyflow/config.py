@@ -20,17 +20,3 @@ dumpStats = False
 useXTypes = True
 useControlSensitivity = True
 useCPA = True
-
-if True:
-    testOnly = [
-        ("tests", "test_full"),
-        # ('tests', 'test_canonical'),
-        # ('tests', 'test_graphalgorithims'),
-        ("tests", "ipa"),
-        ("tests", "test_ssa"),
-    ]
-
-testExclude = [
-    # Known to be broken
-    ("tests", "decompilertests", "test_exception"),
-]

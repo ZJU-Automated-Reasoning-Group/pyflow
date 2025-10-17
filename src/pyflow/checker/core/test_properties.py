@@ -19,7 +19,7 @@ def checks(*args):
     return wrapper
 
 
-def test_id(id_val):
+def with_id(id_val):
     """Test function identifier decorator"""
     def _has_id(func):
         if not hasattr(func, "_test_id"):

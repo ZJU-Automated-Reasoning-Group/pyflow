@@ -6,7 +6,7 @@ from ..core import test_properties as test
 
 
 @test.checks("Import")
-@test.test_id("B401-B415")
+@test.with_id("B401-B415")
 def check_blacklisted_imports(context):
     """Check for blacklisted module imports"""
     if not isinstance(getattr(context, 'node', None), ast.Import):
@@ -18,7 +18,7 @@ def check_blacklisted_imports(context):
 
 
 @test.checks("ImportFrom")
-@test.test_id("B401-B415")
+@test.with_id("B401-B415")
 def check_blacklisted_import_from(context):
     """Check for blacklisted from imports"""
     node = getattr(context, 'node', None)

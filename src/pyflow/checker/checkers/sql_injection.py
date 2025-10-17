@@ -16,7 +16,7 @@ def sql_injection_issue():
 
 
 @test.checks("Call")
-@test.test_id("B608")
+@test.with_id("B608")
 def sql_injection_string_formatting(context):
     """Check for SQL injection via string formatting"""
     # This is a simplified check - in practice you'd want to analyze the query string
@@ -25,7 +25,7 @@ def sql_injection_string_formatting(context):
 
 
 @test.checks("Call")
-@test.test_id("B609")
+@test.with_id("B609")
 def sql_injection_concatenation(context):
     """Check for SQL injection via string concatenation"""
     # This is a simplified check - in practice you'd want to analyze the query string

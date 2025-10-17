@@ -4,7 +4,7 @@ from ..core import test_properties as test
 
 
 @test.checks("Call")
-@test.test_id("B102")
+@test.with_id("B102")
 def exec_used(context):
     """Check for use of exec function"""
     if context.call_function_name_qual == "exec":

@@ -16,7 +16,7 @@ def shell_injection_issue():
 
 
 @test.checks("Call")
-@test.test_id("B602")
+@test.with_id("B602")
 def subprocess_popen_with_shell_equals_true(context):
     """Check for subprocess.Popen with shell=True"""
     if context.call_function_name_qual == "subprocess.Popen":
@@ -26,7 +26,7 @@ def subprocess_popen_with_shell_equals_true(context):
 
 
 @test.checks("Call")
-@test.test_id("B603")
+@test.with_id("B603")
 def subprocess_without_shell_equals_true(context):
     """Check for subprocess calls without shell=True but with shell injection risk"""
     # This is a simplified check - in practice you'd want to analyze the command construction
@@ -35,7 +35,7 @@ def subprocess_without_shell_equals_true(context):
 
 
 @test.checks("Call")
-@test.test_id("B604")
+@test.with_id("B604")
 def any_other_function_with_shell_equals_true(context):
     """Check for other functions with shell=True"""
     if context.call_function_name_qual in ["os.system", "os.popen", "commands.getstatusoutput"]:

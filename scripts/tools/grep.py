@@ -99,7 +99,7 @@ commentRE = makeCommentRE()
 
 def splitLine(line):
 	match = commentRE.match(line)
-	assert match != None, line
+	assert match is not None, line
 	return [('' if group==None else group.strip()) for group in match.groups()]
 
 
@@ -119,9 +119,9 @@ class StandardGrep(object):
 
 	def displayMatch(self, fn, lineno, line):
 		if fn != self.lastFile:
-		if self.lastFile is not None:
-			print()()
-		print(fn)
+			if self.lastFile is not None:
+				print()
+			print(fn)
 			self.lastFile = fn
 		print("%d\t%s" % (lineno, line.strip()))
 
@@ -204,13 +204,13 @@ class StandardGrep(object):
 			print()
 
 		if self.matchText:
-			print("%7.1d occurances in %d file%s." % (self.occurances, self.fileOccurances, 's' if self.fileOccurances != 1 else ''))
-			print("%7.1d lines." % self.lines)
-		print("%7.1d files." % self.files)
+			print("%7d occurances in %d file%s." % (self.occurances, self.fileOccurances, 's' if self.fileOccurances != 1 else ''))
+			print("%7d lines." % self.lines)
+		print("%7d files." % self.files)
 
 		if replaceActive():
-			print("%7.1d lines rewritten." % self.linesChanged)
-			print("%7.1d files changed." % self.filesChanged)
+			print("%7d lines rewritten." % self.linesChanged)
+			print("%7d files changed." % self.filesChanged)
 
 def makeIDMatcher(s):
 	# The lookaheads/lookbehinds ensures that the expr starts and ends either
@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
 	# Build the regular expressions.
 
-	print
+	print()
 
 	fileFilters = []
 
@@ -294,7 +294,7 @@ if __name__ == '__main__':
 		print("!repl: %s -> %s" % rf)
 		replaceFilters.append((re.compile(rf[0], flags), rf[1]))
 
-	print
+	print()
 
 	directoryName = options.directory
 

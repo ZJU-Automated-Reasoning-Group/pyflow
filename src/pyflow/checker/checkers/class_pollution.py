@@ -134,7 +134,7 @@ def _get_node_description(node):
 
 
 @test.checks("Call")
-@test.test_id("B701")
+@test.with_id("B701")
 def setattr_with_user_input(context):
     """Check for setattr() calls that might use user input for attribute names"""
     if context.call_function_name_qual == "setattr" and len(context.node.args) >= 2:
@@ -163,7 +163,7 @@ def setattr_with_user_input(context):
 
 
 @test.checks("Call") 
-@test.test_id("B702")
+@test.with_id("B702")
 def unsafe_object_merge(context):
     """Check for unsafe object merging patterns that could lead to class pollution"""
     if context.call_function_name_qual in ["dict.update", "object.__setattr__"] and context.node.args:
@@ -186,7 +186,7 @@ def unsafe_object_merge(context):
 
 
 @test.checks("Call")
-@test.test_id("B703") 
+@test.with_id("B703") 
 def dynamic_attribute_assignment(context):
     """Check for dynamic attribute assignment patterns"""
     if (context.call_function_name_qual == "dict.update" and 
@@ -213,7 +213,7 @@ def dynamic_attribute_assignment(context):
 
 
 @test.checks("Assign")
-@test.test_id("B704")
+@test.with_id("B704")
 def unsafe_dict_assignment(context):
     """Check for unsafe dictionary assignments that might affect object attributes"""
     node = context.node
@@ -259,7 +259,7 @@ def unsafe_dict_assignment(context):
 
 
 @test.checks("Call")
-@test.test_id("B705")
+@test.with_id("B705")
 def getattr_setattr_patterns(context):
     """Check for getattr/setattr patterns that might be exploitable"""
     if context.call_function_name_qual == "getattr" and len(context.node.args) >= 2:
@@ -288,7 +288,7 @@ def getattr_setattr_patterns(context):
 
 
 @test.checks("Call")
-@test.test_id("B706")
+@test.with_id("B706")
 def vars_globals_locals_usage(context):
     """Check for usage of vars(), globals(), or locals() with user input"""
     func_name = context.call_function_name_qual
