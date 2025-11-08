@@ -2,39 +2,6 @@
 # PyFlow: A Static Analysis Framework for Python
 
 
-## Overview
-
-
-
-### The Dataflow Analsyis over CFG
-
-Flow-Sensitive
-
-- The CFG module itself contains several analyses that operate directly on control flow graphs
-  + CFG Optimization - Optimizes CFG nodes including constant folding, dead code elimination, control flow simplification, removing unnecessary nodes, etc.
-  + ..
-- CDG Construction (cdg/construction.py) - Builds Control Dependence Graphs from CFGs using dominance frontiers
-
-
-### The Constraint-based Analysis 
-
-However, several analysis components (Context-Sensitive, Flow-inensitive) do not directly use CFG 
-- CPA (Constraint Propagation Analysis) - Uses store graphs and constraint solving
-- Shape Analysis - Uses region-based analysis
-- Lifetime Analysis - Uses read/modify analysis
-
-
-Workflow:
-
-~~~~
-AST/Code → Store Graph → CPA (Interprocedural) → Shape Analysis (uses CPA results) → Lifetime Analysis (uses CPA results)
-~~~~
-
-- IPA and CPA work together - IPA provides the interprocedural framework while CPA performs the actual constraint solving
-- All analyses use the store graph as their foundation for representing object relationships
-- Results flow downstream - Shape analysis uses CPA's points-to/type information, and Lifetime analysis uses both CPA and shape analysis results
-
-
 
 ## Installation and Usage
 
@@ -74,20 +41,6 @@ pytest tests/unit/
 pytest tests/integration/
 ```
 
-### Using PyFlow Programmatically
-
-```python
-from pyflow import Program, Pipeline, Context
-
-# Create a program instance
-program = Program()
-
-# Set up analysis pipeline
-pipeline = Pipeline()
-
-# Run analysis
-context = Context()
-# ... configure and run analysis
 ```
 
 ## Development
@@ -193,20 +146,12 @@ pyflow/
 ```
 
 
-### Running Development Tools
+## Related Work
 
-```bash
-# Format code
-black src/ tests/
-
-# Lint code
-flake8 src/ tests/
-
-# Type checking
-mypy src/
-
-# Run tests with coverage
-pytest --cov=pyflow
-```
-
-
+- https://github.com/lkgv/PythonStAn
+  + Dataflow Analysis: Liveness analysis, reaching definition analysis, and def-use chains
+  + Pointer Analysis: k-CFA based pointer analysis with configurable context sensitivity
+  + Control Flow Analysis: CFG generation, interprocedural control flow graphs (ICFG)
+  + Abstract Interpretation: AI-based analysis with configurable abstract domains
+  + Scope Analysis: Module and function scope management
+- https://github.com/SMAT-Lab/Scalpel: Bais IR construction

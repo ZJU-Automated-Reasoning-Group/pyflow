@@ -10,7 +10,7 @@ import os
 import sys
 import types
 from typing import List, Optional
-from pyflow.machinery.callgraph import CallGraph
+from .callgraph import CallGraph
 
 try:
     import pycg  # type: ignore

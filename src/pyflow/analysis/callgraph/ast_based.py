@@ -10,7 +10,7 @@ import ast
 from typing import Dict, Set, List, Tuple, Any
 from collections import defaultdict
 
-from ...machinery.callgraph import CallGraph
+from .callgraph import CallGraph
 
 
 def extract_call_graph(source_code: str) -> CallGraph:
