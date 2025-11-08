@@ -41,8 +41,6 @@ pytest tests/unit/
 pytest tests/integration/
 ```
 
-```
-
 ## Development
 
 ### Project Structure
@@ -154,4 +152,4 @@ pyflow/
   + Control Flow Analysis: CFG generation, interprocedural control flow graphs (ICFG)
   + Abstract Interpretation: AI-based analysis with configurable abstract domains
   + Scope Analysis: Module and function scope management
-- https://github.com/SMAT-Lab/Scalpel: Bais IR construction
+- https://github.com/SMAT-Lab/Scalpel: Basic IR construction
